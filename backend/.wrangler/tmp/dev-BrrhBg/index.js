@@ -1854,10 +1854,10 @@ var require_cjs = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-wbbiJh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-LX5uXf/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-wbbiJh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-LX5uXf/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.js
@@ -14428,8 +14428,7 @@ app.get("/callback", async (c) => {
   try {
     ;
     ({ access_token } = JSON.parse(tokBody));
-  } catch (e) {
-    console.error("Kakao token parse error:", tokBody);
+  } catch {
     return c.text("Kakao token parse error", 502);
   }
   const meRes = await fetch(`${KAPI}/v2/user/me`, {
@@ -14444,7 +14443,6 @@ app.get("/callback", async (c) => {
   try {
     me = JSON.parse(meBody);
   } catch {
-    console.error("Kakao me parse error:", meBody);
     return c.text("Kakao me parse error", 502);
   }
   const kakaoId = String(me.id);
@@ -14455,17 +14453,13 @@ app.get("/callback", async (c) => {
   const row = {
     provider: "kakao",
     provider_sub: kakaoId,
-    // 유니크
     nickname,
     email,
     photo_url,
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
   const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
-  if (error) {
-    console.error("DB upsert error:", error);
-    return c.text("DB error: " + error.message, 500);
-  }
+  if (error) return c.text("DB error: " + error.message, 500);
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
   const isLocal = new URL(c.req.url).hostname === "localhost";
   setCookie(c, "rc_session", jwt, {
@@ -14473,11 +14467,10 @@ app.get("/callback", async (c) => {
     httpOnly: true,
     sameSite: "Lax",
     secure: !isLocal,
-    // 로컬은 false, 배포 true
     maxAge: 60 * 60 * 24 * 30
-    // 30일
   });
-  const dest = state.redirect || "/";
+  const fallback = c.env.APP_REDIRECT_DEFAULT || "https://popple1101.github.io/runningcrew/app";
+  const dest = state?.redirect && /^https?:\/\//.test(state.redirect) ? state.redirect : fallback;
   return c.redirect(dest, 302);
 });
 var kakao_default = app;
@@ -14769,7 +14762,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-wbbiJh/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-LX5uXf/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14802,7 +14795,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-wbbiJh/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-LX5uXf/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -1,23 +1,30 @@
 import React from "react";
 
 export default function KakaoLoginButton({ icon = "kakao-symbol.png" }) {
-  const AUTH_BASE =
-    import.meta.env.PROD && import.meta.env.VITE_AUTH_BASE
-      ? import.meta.env.VITE_AUTH_BASE
-      : "/auth";
+  // prod: 절대 백엔드 오리진, dev: Vite 프록시(상대경로)
+  const AUTH_ORIGIN = (() => {
+    if (import.meta.env.PROD) {
+      const v = import.meta.env.VITE_AUTH_BASE;
+      return v && /^https?:\/\//.test(v)
+        ? v
+        : "https://runcrew-backend.popple1101.workers.dev";
+    }
+    return ""; // dev에서 '/auth/...'로 호출
+  })();
 
-  // /runningcrew/ 같은 베이스를 고려한 절대 리다이렉트(/app)
+  // /runningcrew/ 베이스 고려한 최종 복귀 URL (/app)
+  const BASE = import.meta.env.BASE_URL || "/";
   const redirectUrl = new URL(
-    (import.meta.env.BASE_URL || "/") + "app",
+    BASE.replace(/\/?$/, "/") + "app",
     window.location.origin
   ).toString();
 
-  const loginUrl = `${AUTH_BASE}/kakao?redirect=${encodeURIComponent(
+  // 항상 '/auth/kakao' 경로로 호출 (prod는 절대, dev는 상대)
+  const loginUrl = `${AUTH_ORIGIN}/auth/kakao?redirect=${encodeURIComponent(
     redirectUrl
   )}`;
 
-  // BASE_URL 기반 아이콘 경로 보정
-  const BASE = import.meta.env.BASE_URL || "/";
+  // BASE_URL 기준 아이콘 경로 보정
   const resolveAsset = (p) =>
     /^https?:\/\//.test(p) ? p : `${BASE}${p.replace(/^\//, "")}`;
   const iconSrc = resolveAsset(icon);
