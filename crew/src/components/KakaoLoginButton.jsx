@@ -1,3 +1,4 @@
+import React from "react"; // ← 추가
 export default function KakaoLoginButton({ icon = "/kakao-symbol.png" }) {
   const base = import.meta.env.VITE_API_BASE;
   const redirect = encodeURIComponent(`${location.origin}/app`);
