@@ -4,7 +4,7 @@
 export const API =
   import.meta.env.PROD && import.meta.env.VITE_API_BASE
     ? import.meta.env.VITE_API_BASE
-    : '/api';
+    : '/api'
 
 export async function getMe() {
   const controller = new AbortController();
