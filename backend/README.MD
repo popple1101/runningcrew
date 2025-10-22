@@ -2,7 +2,7 @@
 npm install
 npm install hono @supabase/supabase-js jose web-push
 npm install -D wrangler 
-
+npm i -g wrangler
 
 
 # 로그인 (최초 1회만)
