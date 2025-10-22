@@ -34,36 +34,57 @@ export async function getMe() {
   }
 }
 
-// 선택: 로그아웃 helper (AuthContext에서 쓰기 편하게)
+// 로그아웃 helper
 export async function postLogout() {
   try {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
   } catch {}
 }
-// === 아래 내용만 파일 맨 아래에 추가 ===
 
-// 온보딩 저장
-// 온보딩 저장
+// 프로필 저장/업데이트
 export async function putProfile(payload) {
-  const r = await fetch(`${API}/profile`, {
+  const r = await fetch(`${API}/api/profile`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(errorText);
+  }
   return r.json();
 }
 
+// 프로필 조회
+export async function getProfile() {
+  const r = await fetch(`${API}/api/profile`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(errorText);
+  }
+  return r.json();
+}
 
-// 프로필 완성 여부(백엔드 속성명은 상황 맞춰 조정)
+// 프로필 완성 여부 검증
 export function isProfileComplete(user) {
   if (!user) return false;
-  // 예시: nickname/age/gender + region_verified 필요
-  const ok =
-    !!user.nickname &&
-    !!user.age &&
-    !!user.gender &&
-    (user.region_verified === true || user.regionVerified === true);
-  return ok;
+  
+  // 필수 필드 검증
+  const hasBasicInfo = !!(
+    user.nickname &&
+    user.age &&
+    user.gender
+  );
+  
+  // 지역 인증 검증
+  const hasLocation = !!(
+    user.region_verified === true ||
+    (user.lat && user.lng)
+  );
+  
+  return hasBasicInfo && hasLocation;
 }
