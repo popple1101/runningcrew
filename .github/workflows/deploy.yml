@@ -25,13 +25,13 @@ jobs:
         with:
           node-version: 20
 
-      # ✅ 프론트 프로젝트 디렉터리 자동 탐색 (. /frontend /web /app /client 순서)
+      # ✅ 프론트 프로젝트 디렉터리 자동 탐색 (. /crew /frontend /web /app /client 순서)
       - name: Detect project directory
         id: detect
         shell: bash
         run: |
           set -e
-          for d in . frontend web app client; do
+          for d in . crew frontend web app client; do
             if [ -f "$d/package.json" ]; then
               echo "dir=$d" >> "$GITHUB_OUTPUT"
               echo "Detected project dir: $d"
