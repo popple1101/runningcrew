@@ -1,4 +1,7 @@
-/* 페이지 레이아웃: 화면 정중앙 배치 */
+:root {
+  --kakao: #fee500;
+  --kakao-text: #191600;
+}
 .page {
   min-height: 100svh; /* 모바일 키보드 대응 뷰포트 */
   display: grid;
