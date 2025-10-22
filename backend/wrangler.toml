@@ -10,6 +10,7 @@ AUTH_SECRET  = "3249a0d73ac68118509d6dabdade7cdad5c80f08e43c6be3cda06471ec495cbd
 
 # Supabase
 SUPABASE_URL = "https://yxfkpddrakhnccpqttzl.supabase.co"
+# SUPABASE_SERVICE_ROLE_KEY는 wrangler secret으로 설정해야 함
 
 # CORS (오리진만)
 CORS_ORIGINS = "https://popple1101.github.io"
