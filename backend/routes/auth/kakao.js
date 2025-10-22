@@ -14,6 +14,7 @@ app.get('/', async (c) => {
     client_id: c.env.KAKAO_CLIENT_ID,
     redirect_uri: c.env.KAKAO_REDIRECT_URI,
     response_type: 'code',
+    // MVP면 email은 빼도 됨: 'profile_nickname'
     scope: 'profile_nickname account_email',
     state
   })
@@ -34,14 +35,14 @@ app.get('/callback', async (c) => {
   }
   const redirectPath = parsed.redirect || '/'
 
-  // 토큰 교환
+  // ── 토큰 교환
   const tokenRes = await fetch(`${KAUTH}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: c.env.KAKAO_CLIENT_ID,
-      redirect_uri: c.env.KAKAO_REDIRECT_URI,
+      redirect_uri: c.env.KAKAO_REDIRECT_URI, // 카카오 콘솔과 정확히 일치해야 함
       code,
       ...(c.env.KAKAO_CLIENT_SECRET ? { client_secret: c.env.KAKAO_CLIENT_SECRET } : {})
     })
@@ -49,7 +50,7 @@ app.get('/callback', async (c) => {
   if (!tokenRes.ok) return c.text('Token exchange failed', 500)
   const token = await tokenRes.json()
 
-  // 사용자 정보 조회
+  // ── 사용자 정보
   const meRes = await fetch(`${KAPI}/v2/user/me`, {
     headers: { Authorization: `Bearer ${token.access_token}` }
   })
@@ -65,31 +66,49 @@ app.get('/callback', async (c) => {
     me.kakao_account?.profile?.profile_image_url ||
     null
 
-  // DB 저장
-  const supa = getSupabase(c)
-  const { data: user, error } = await supa
-    .from('users')
-    .upsert({ provider, provider_sub, nickname, email, photo_url }, { onConflict: 'provider_sub' })
-    .select('*')
-    .eq('provider_sub', provider_sub)
-    .single()
-  if (error) return c.text(`DB Error: ${error.message}`, 500)
+  // ── DB upsert
+  try {
+    const supa = getSupabase(c)
+    const { data: user, error } = await supa
+      .from('users')
+      .upsert(
+        { provider, provider_sub, nickname, email, photo_url },
+        { onConflict: 'provider_sub' }
+      )
+      .select('*')
+      .eq('provider_sub', provider_sub)
+      .single()
+    if (error) return c.text(`DB Error: ${error.message}`, 500)
 
-  // JWT 세션 쿠키 발급
-  const jwt = await signJWT({ sub: user.id, nickname: user.nickname }, c.env, 60 * 60 * 24 * 30)
-  const cookie = [
-    `rc_session=${jwt}`,
-    'Path=/',
-    'HttpOnly',
-    'Secure',
-    'SameSite=Lax',
-    `Max-Age=${60 * 60 * 24 * 30}`
-  ].join('; ')
+    // ── 세션 쿠키
+    const jwt = await signJWT(
+      { sub: user.id, nickname: user.nickname },
+      c.env,
+      60 * 60 * 24 * 30
+    )
 
-  return new Response(null, {
-    status: 302,
-    headers: { 'Set-Cookie': cookie, Location: redirectPath }
-  })
+    const hostname = new URL(c.req.url).hostname
+    const isLocal = hostname === '127.0.0.1' || hostname === 'localhost'
+
+    const cookie = [
+      `rc_session=${jwt}`,
+      'Path=/',
+      'HttpOnly',
+      isLocal ? 'SameSite=Lax' : 'SameSite=None',
+      !isLocal ? 'Secure' : '',
+      `Max-Age=${60 * 60 * 24 * 30}`
+    ].filter(Boolean).join('; ')
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        'Set-Cookie': cookie,
+        Location: redirectPath
+      }
+    })
+  } catch (e) {
+    return c.text(`DB Error: ${e.message || e}`, 500)
+  }
 })
 
 export default app
