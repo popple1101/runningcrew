@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function NaverLoginButton({
-  icon = "/naver-symbol.png",
+  icon = "naver-symbol.png",
   className = "",
 }) {
   const AUTH_BASE =
@@ -9,7 +9,6 @@ export default function NaverLoginButton({
       ? import.meta.env.VITE_AUTH_BASE
       : "/auth";
 
-  // 절대 리다이렉트(/app)
   const redirectUrl = new URL(
     (import.meta.env.BASE_URL || "/") + "app",
     window.location.origin
@@ -19,6 +18,11 @@ export default function NaverLoginButton({
     redirectUrl
   )}`;
 
+  const BASE = import.meta.env.BASE_URL || "/";
+  const resolveAsset = (p) =>
+    /^https?:\/\//.test(p) ? p : `${BASE}${p.replace(/^\//, "")}`;
+  const iconSrc = resolveAsset(icon);
+
   return (
     <a
       href={loginUrl}
@@ -26,7 +30,7 @@ export default function NaverLoginButton({
       aria-label="네이버로 시작하기"
     >
       <img
-        src={icon}
+        src={iconSrc}
         alt=""
         className="naver-icon"
         width={22}

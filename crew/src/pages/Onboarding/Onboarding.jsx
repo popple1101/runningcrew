@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { putProfile } from '../../lib/api';
 import { useProfileStatus } from '../../context/useProfileStatus';
 import './Onboarding.css';
-import 'leaflet/dist/leaflet.css'; // 지도 스타일
+import 'leaflet/dist/leaflet.css';
 
 export default function Onboarding() {
   const { user, refresh } = useProfileStatus();
@@ -46,54 +46,63 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="ob-wrap">
-      {step === 1 && (
-        <StepProfile value={form} onChange={setForm} onNext={next} />
-      )}
+    <div className="ob-shell">
+      <div className="ob-wrap">
+        {/* Step indicator */}
+        <div className="ob-steps" aria-hidden>
+          <span className={step >= 1 ? 'active' : ''} />
+          <span className={step >= 2 ? 'active' : ''} />
+          <span className={step >= 3 ? 'active' : ''} />
+        </div>
 
-      {step === 2 && (
-        <StepLocation
-          value={form}
-          onChange={setForm}
-          onBack={back}
-          onNext={next}
-        />
-      )}
+        {step === 1 && (
+          <StepProfile value={form} onChange={setForm} onNext={next} />
+        )}
 
-      {step === 3 && (
-        <section className="ob-card">
-          <h2>크루</h2>
-          <div className="ob-choices">
-            {[
-              ['have', '이미 크루가 있어요'],
-              ['create', '크루 만들기'],
-              ['browse', '크루 찾아보기'],
-            ].map(([v, label]) => (
-              <label key={v} className={`ob-choice ${form.crewChoice === v ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="crew"
-                  value={v}
-                  checked={form.crewChoice === v}
-                  onChange={(e) => setForm({ ...form, crewChoice: e.target.value })}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
+        {step === 2 && (
+          <StepLocation
+            value={form}
+            onChange={setForm}
+            onBack={back}
+            onNext={next}
+          />
+        )}
 
-          <div className="ob-actions">
-            <button onClick={back}>이전</button>
-            <button
-              className="ob-primary"
-              onClick={submit}
-              disabled={!form.crewChoice || saving}
-            >
-              {saving ? '저장 중…' : '완료'}
-            </button>
-          </div>
-        </section>
-      )}
+        {step === 3 && (
+          <section className="ob-card">
+            <h2>크루</h2>
+            <div className="ob-choices">
+              {[
+                ['have', '이미 크루가 있어요'],
+                ['create', '크루 만들기'],
+                ['browse', '크루 찾아보기'],
+              ].map(([v, label]) => (
+                <label key={v} className={`ob-choice ${form.crewChoice === v ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="crew"
+                    value={v}
+                    checked={form.crewChoice === v}
+                    onChange={(e) => setForm({ ...form, crewChoice: e.target.value })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <div className="ob-actions">
+              <button className="btn btn-ghost" onClick={back}>이전</button>
+              <button
+                className="btn btn-primary"
+                onClick={submit}
+                disabled={!form.crewChoice || saving}
+              >
+                {saving ? '저장 중…' : '완료'}
+              </button>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
@@ -155,7 +164,7 @@ function StepProfile({ value, onChange, onNext }) {
       </div>
 
       <div className="ob-actions">
-        <button className="ob-primary" disabled={!canNext} onClick={onNext}>
+        <button className="btn btn-primary" disabled={!canNext} onClick={onNext}>
           다음
         </button>
       </div>
@@ -184,11 +193,11 @@ function StepLocation({ value, onChange, onBack, onNext }) {
   return (
     <section className="ob-card">
       <h2>지역 인증</h2>
-      <p>현재 위치를 인증하거나 지도로 직접 선택하세요.</p>
+      <p style={{ color: 'var(--muted)' }}>현위치로 인증하거나, 지도로 직접 선택하세요.</p>
 
       <div className="ob-actions" style={{ justifyContent: 'flex-start' }}>
-        <button className="ob-primary" onClick={requestGeo}>현위치로 인증</button>
-        <button onClick={() => setOpen(true)}>지도로 직접 선택</button>
+        <button className="btn btn-primary" onClick={requestGeo}>현위치로 인증</button>
+        <button className="btn btn-ghost" onClick={() => setOpen(true)}>지도로 직접 선택</button>
       </div>
 
       {status === 'pending' && <p className="ob-hint">확인 중…</p>}
@@ -212,14 +221,14 @@ function StepLocation({ value, onChange, onBack, onNext }) {
       />
 
       <div className="ob-actions">
-        <button onClick={onBack}>이전</button>
-        <button className="ob-primary" onClick={onNext} disabled={!value.location}>다음</button>
+        <button className="btn btn-ghost" onClick={onBack}>이전</button>
+        <button className="btn btn-primary" onClick={onNext} disabled={!value.location}>다음</button>
       </div>
     </section>
   );
 }
 
-/** 지도 선택 모달(Leaflet, React-Leaflet 없이 순수 Leaflet) */
+/** 지도 선택 모달 (Leaflet) */
 function MapPickerModal({ open, onClose, onPick, initial }) {
   const ref = useRef(null);
   const mapRef = useRef(null);
@@ -229,10 +238,8 @@ function MapPickerModal({ open, onClose, onPick, initial }) {
     if (!open) return;
     let L;
     (async () => {
-      // 동적 로드(번들 초기용량 최소화)
       L = (await import('leaflet')).default;
 
-      // 아이콘(기본 마커가 깨질 수 있어 수동 세팅)
       const icon = L.icon({
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -243,9 +250,7 @@ function MapPickerModal({ open, onClose, onPick, initial }) {
       const el = ref.current;
       if (!el) return;
 
-      const center = initial
-        ? [initial.lat, initial.lng]
-        : [37.5665, 126.9780]; // 서울시청
+      const center = initial ? [initial.lat, initial.lng] : [37.5665, 126.9780]; // 서울시청
 
       mapRef.current = L.map(el).setView(center, 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -255,9 +260,7 @@ function MapPickerModal({ open, onClose, onPick, initial }) {
 
       markerRef.current = L.marker(center, { icon, draggable: true }).addTo(mapRef.current);
 
-      mapRef.current.on('click', (e) => {
-        markerRef.current.setLatLng(e.latlng);
-      });
+      mapRef.current.on('click', (e) => markerRef.current.setLatLng(e.latlng));
     })();
 
     return () => {
@@ -275,9 +278,9 @@ function MapPickerModal({ open, onClose, onPick, initial }) {
       <div className="ob-modal-body">
         <div ref={ref} className="ob-map" />
         <div className="ob-modal-actions">
-          <button onClick={onClose}>취소</button>
+          <button className="btn btn-ghost" onClick={onClose}>취소</button>
           <button
-            className="ob-primary"
+            className="btn btn-primary"
             onClick={() => {
               const ll = markerRef.current?.getLatLng();
               if (ll) onPick({ lat: ll.lat, lng: ll.lng });

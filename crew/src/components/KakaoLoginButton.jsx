@@ -1,14 +1,12 @@
 import React from "react";
 
-export default function KakaoLoginButton({ icon = "/kakao-symbol.png" }) {
-  // dev: /auth → Vite 프록시
-  // prod: 필요하면 VITE_AUTH_BASE에 풀 URL 넣기(예: https://runcrew-backend.../auth)
+export default function KakaoLoginButton({ icon = "kakao-symbol.png" }) {
   const AUTH_BASE =
     import.meta.env.PROD && import.meta.env.VITE_AUTH_BASE
       ? import.meta.env.VITE_AUTH_BASE
       : "/auth";
 
-  // 라우터 basename 고려해서 /app 절대 URL 구성
+  // /runningcrew/ 같은 베이스를 고려한 절대 리다이렉트(/app)
   const redirectUrl = new URL(
     (import.meta.env.BASE_URL || "/") + "app",
     window.location.origin
@@ -18,10 +16,16 @@ export default function KakaoLoginButton({ icon = "/kakao-symbol.png" }) {
     redirectUrl
   )}`;
 
+  // BASE_URL 기반 아이콘 경로 보정
+  const BASE = import.meta.env.BASE_URL || "/";
+  const resolveAsset = (p) =>
+    /^https?:\/\//.test(p) ? p : `${BASE}${p.replace(/^\//, "")}`;
+  const iconSrc = resolveAsset(icon);
+
   return (
     <a href={loginUrl} className="kakao-btn" aria-label="카카오로 시작하기">
       <img
-        src={icon}
+        src={iconSrc}
         alt=""
         className="kakao-icon"
         width={22}
