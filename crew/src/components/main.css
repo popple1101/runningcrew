@@ -1,31 +1,33 @@
+/* 기존 kakao 스타일은 유지 */
 :root {
   --kakao: #fee500;
   --kakao-text: #191600;
+  --naver: #03c75a;
 }
+
 .page {
-  min-height: 100svh; /* 모바일 키보드 대응 뷰포트 */
+  min-height: 100svh;
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background: #fff; /* 안전하게 흰 배경 한 번 더 */
+  background: #fff;
 }
 
 .stack {
   width: 100%;
-  max-width: 560px; /* 버튼/로고 최대 폭 */
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px; /* 로고-버튼 간격 */
+  gap: 16px;
 }
 
-/* 로고 반응형 크기 */
 .logo {
   width: min(64vw, 360px);
   height: auto;
 }
 
-/* 카카오 버튼 */
+/* Kakao */
 .kakao-btn {
   display: inline-flex;
   align-items: center;
@@ -52,8 +54,40 @@
   transform: translateY(1px);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
 }
-
 .kakao-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+/* Naver */
+.naver-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--naver);
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(16px, 4vw, 18px);
+  line-height: 1;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transition: transform 0.06s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.naver-btn:hover {
+  opacity: 0.96;
+}
+.naver-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+.naver-icon {
   width: 22px;
   height: 22px;
   display: block;
