@@ -110,16 +110,20 @@ app.get('/callback', async (c) => {
     last_login_at: new Date().toISOString(),
   }
 
-  const { error } = await supa
+  // DB upsert 및 ID 반환
+  const { data: user, error } = await supa
     .from('users')
-    .upsert(row, { onConflict: 'provider_sub' }) // 유니크 인덱스에 맞춤
+    .upsert(row, { onConflict: 'provider_sub' })
+    .select('id')
+    .single()
+  
   if (error) {
     console.error('DB upsert error:', error)
     return c.text('DB error: ' + error.message, 500)
   }
 
-  // 세션 쿠키 발급
-  const jwt = await signJWT({ sub: kakaoId, provider: 'kakao' }, c.env, 60 * 60 * 24 * 30)
+  // 세션 쿠키 발급 (user.id를 문자열로 변환)
+  const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30)
   const isLocal = new URL(c.req.url).hostname === 'localhost'
   setCookie(c, 'rc_session', jwt, {
     path: '/',

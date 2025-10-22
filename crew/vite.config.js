@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const TARGET = 'https://runcrew-backend.popple1101.workers.dev'
+const TARGET = 'http://localhost:8787'
 
 export default defineConfig({
   plugins: [react()],
@@ -11,7 +11,7 @@ export default defineConfig({
       '/api': {
         target: TARGET,
         changeOrigin: true,
-        secure: true,
+        secure: false,
         // ✅ /api → '' 로 바꿔서 백엔드의 /me 로 전달
         rewrite: (path) => path.replace(/^\/api/, ''),
         // (선택) 쿠키 Domain 제거: localhost에 세션 저장
@@ -23,7 +23,7 @@ export default defineConfig({
         },
       },
       // OAuth 시작/콜백은 /auth 그대로 프록시
-      '/auth': { target: TARGET, changeOrigin: true, secure: true },
+      '/auth': { target: TARGET, changeOrigin: true, secure: false },
     },
   },
 })
