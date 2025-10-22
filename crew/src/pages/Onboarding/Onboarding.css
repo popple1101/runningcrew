@@ -1,0 +1,152 @@
+/* ====== Layout ====== */
+.ob-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(16px, 4vw, 24px);
+}
+
+/* ====== Card ====== */
+.ob-card {
+  background: #121314;
+  border: 1px solid #26282c;
+  color: #e6ebf2;
+  border-radius: 16px;
+  padding: clamp(14px, 3.5vw, 20px);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.25);
+}
+
+.ob-card h2 { margin: 0 0 12px; font-size: clamp(18px, 2.8vw, 22px); }
+.ob-card label,
+.ob-card legend,
+.ob-card p { color: #cfd6e1; }
+
+/* ====== Form Grid ====== */
+.ob-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.ob-field { display: flex; flex-direction: column; }
+.ob-field label {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #e6ebf2;
+}
+.ob-field-full { grid-column: 1 / -1; }
+
+@media (min-width: 640px) {
+  .ob-form { grid-template-columns: 1fr 1fr; }
+}
+
+/* ====== Inputs ====== */
+.ob-card input[type="text"],
+.ob-card input[type="number"] {
+  width: 100%;
+  margin-top: 2px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid #2e3136;
+  background: #0e1013;
+  color: #ffffff;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ob-card input::placeholder { color: #97a1af; }
+
+.ob-card input:focus {
+  border-color: #2b70ff;
+  box-shadow: 0 0 0 3px rgba(43,112,255,.25);
+}
+
+/* ====== Radios ====== */
+.ob-fieldset { border: 0; margin: 14px 0 6px; padding: 0; }
+.ob-radios { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.ob-radio { display: inline-flex; align-items: center; gap: 8px; }
+.ob-radio input { accent-color: #2b70ff; }
+
+/* ====== Actions ====== */
+.ob-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .ob-actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 8px;
+    background: linear-gradient(180deg, transparent, rgba(18,19,20,.9));
+  }
+  .ob-actions .ob-primary { flex: 1; }
+}
+
+button {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #2a2f36;
+  background: #1a1d22;
+  color: #e6ebf2;
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.05); }
+button:disabled { opacity: .6; cursor: not-allowed; }
+.ob-primary { background: #2b70ff; border-color: #2b70ff; color: #fff; }
+
+/* ====== Status ====== */
+.ob-hint { opacity: .85; }
+.ob-ok { color: #34d399; }
+.ob-err { color: #ef4444; }
+
+/* ====== Crew choices ====== */
+.ob-choices { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 520px) {
+  .ob-choices { grid-template-columns: repeat(3, 1fr); }
+}
+.ob-choice {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #2c3138;
+  background: #101215;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #d7deea;
+}
+.ob-choice.active {
+  border-color: #2b70ff;
+  box-shadow: 0 0 0 3px rgba(43,112,255,.18) inset;
+  background: rgba(43,112,255,.10);
+}
+.ob-choice input { accent-color: #2b70ff; }
+/* ====== Map modal ====== */
+.ob-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  display: grid; place-items: center;
+  z-index: 60;
+}
+.ob-modal-body {
+  width: min(92vw, 720px);
+  background: #0f1216;
+  border: 1px solid #23262c;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+.ob-map {
+  width: 100%;
+  height: min(70vh, 520px);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ob-modal-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

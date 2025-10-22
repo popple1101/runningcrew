@@ -40,3 +40,30 @@ export async function postLogout() {
     await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
   } catch {}
 }
+// === 아래 내용만 파일 맨 아래에 추가 ===
+
+// 온보딩 저장
+// 온보딩 저장
+export async function putProfile(payload) {
+  const r = await fetch(`${API}/profile`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+
+// 프로필 완성 여부(백엔드 속성명은 상황 맞춰 조정)
+export function isProfileComplete(user) {
+  if (!user) return false;
+  // 예시: nickname/age/gender + region_verified 필요
+  const ok =
+    !!user.nickname &&
+    !!user.age &&
+    !!user.gender &&
+    (user.region_verified === true || user.regionVerified === true);
+  return ok;
+}

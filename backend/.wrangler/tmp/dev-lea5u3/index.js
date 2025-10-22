@@ -2640,14 +2640,14 @@ var Hono = class {
   }
   #notFoundHandler = notFoundHandler;
   errorHandler = errorHandler;
-  route(path, app5) {
+  route(path, app6) {
     const subApp = this.basePath(path);
-    app5.routes.map((r) => {
+    app6.routes.map((r) => {
       let handler;
-      if (app5.errorHandler === errorHandler) {
+      if (app6.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app5.errorHandler)(c, () => r.handler(c, next))).res, "handler");
+        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app6.errorHandler)(c, () => r.handler(c, next))).res, "handler");
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler);
@@ -14525,13 +14525,67 @@ app3.get("/callback", async (c) => {
 });
 var naver_default = app3;
 
-// src/index.js
+// routes/api/profile.js
+init_modules_watch_stub();
 var app4 = new Hono2();
-app4.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
-app4.route("/auth/naver", naver_default);
-app4.route("/auth/kakao", kakao_default);
-app4.route("/me", session_default);
-var src_default = app4;
+async function requireUserId(c) {
+  const token = getCookie(c, "rc_session");
+  if (!token) return null;
+  try {
+    const secret = new TextEncoder().encode(c.env.AUTH_SECRET);
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: c.env.JWT_ISSUER,
+      audience: c.env.JWT_AUDIENCE
+    });
+    return String(payload.sub);
+  } catch {
+    return null;
+  }
+}
+__name(requireUserId, "requireUserId");
+app4.put("/", async (c) => {
+  const userId = await requireUserId(c);
+  if (!userId) return c.text("Unauthorized", 401);
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.text("Bad Request", 400);
+  }
+  const nickname = (body.nickname || "").toString().trim().slice(0, 30);
+  const age = Number(body.age) || null;
+  const gender = ["female", "male", "other"].includes(body.gender) ? body.gender : null;
+  const lat = typeof body.lat === "number" ? body.lat : null;
+  const lng = typeof body.lng === "number" ? body.lng : null;
+  const accuracy = typeof body.accuracy === "number" ? body.accuracy : null;
+  if (!nickname || !age || !gender) {
+    return c.text("nickname/age/gender required", 400);
+  }
+  const region_verified = lat !== null && lng !== null;
+  const sb = getSupabase(c);
+  const { data, error } = await sb.from("users").update({
+    nickname,
+    age,
+    gender,
+    lat,
+    lng,
+    accuracy,
+    region_verified,
+    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+  }).eq("id", userId).select("id, nickname, age, gender, region_verified, lat, lng, accuracy").single();
+  if (error) return c.text("DB error: " + error.message, 500);
+  return c.json({ ok: true, user: data });
+});
+var profile_default = app4;
+
+// src/index.js
+var app5 = new Hono2();
+app5.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
+app5.route("/auth/naver", naver_default);
+app5.route("/auth/kakao", kakao_default);
+app5.route("/me", session_default);
+app5.route("/api/profile", profile_default);
+var src_default = app5;
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_modules_watch_stub();
