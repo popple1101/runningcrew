@@ -1,27 +1,34 @@
-import React from "react"; // ← 추가
+import React from "react";
+
 export default function KakaoLoginButton({ icon = "/kakao-symbol.png" }) {
-  const base = import.meta.env.VITE_API_BASE;
-  const redirect = encodeURIComponent(`${location.origin}/app`);
-  const loginUrl = `${base}/auth/kakao?redirect=${redirect}`;
+  // dev: /auth → Vite 프록시
+  // prod: 필요하면 VITE_AUTH_BASE에 풀 URL 넣기(예: https://runcrew-backend.../auth)
+  const AUTH_BASE =
+    import.meta.env.PROD && import.meta.env.VITE_AUTH_BASE
+      ? import.meta.env.VITE_AUTH_BASE
+      : "/auth";
+
+  // 라우터 basename 고려해서 /app 절대 URL 구성
+  const redirectUrl = new URL(
+    (import.meta.env.BASE_URL || "/") + "app",
+    window.location.origin
+  ).toString();
+
+  const loginUrl = `${AUTH_BASE}/kakao?redirect=${encodeURIComponent(
+    redirectUrl
+  )}`;
+
   return (
     <a href={loginUrl} className="kakao-btn" aria-label="카카오로 시작하기">
-      {/* PNG/SVG 아무거나 가능. 색 강제하고 싶으면 아래 '마스크 방식' 주석 참고 */}
       <img
         src={icon}
         alt=""
         className="kakao-icon"
-        width="22"
-        height="22"
+        width={22}
+        height={22}
         aria-hidden="true"
       />
       <span className="kakao-label">카카오로 시작하기</span>
     </a>
   );
 }
-
-/*
-아이콘을 무조건 검정 단색으로 보이게 하고 싶다면:
-
-1) 위의 <img .../> 대신 <span className="kakao-icon-mask" aria-hidden="true" /> 사용
-2) main.css에 .kakao-icon-mask 스타일 주석 해제
-*/
