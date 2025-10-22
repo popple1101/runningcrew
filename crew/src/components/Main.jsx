@@ -1,5 +1,6 @@
-import React from "react"; // ← 추가
+import React from "react";
 import KakaoLoginButton from "./KakaoLoginButton";
+import NaverLoginButton from "./NaverLoginButton";
 import "./main.css";
 
 export default function Main() {
@@ -16,6 +17,7 @@ export default function Main() {
           decoding="async"
         />
         <KakaoLoginButton icon="/kakao-symbol.png" />
+        <NaverLoginButton icon="/naver-symbol.png" />
       </div>
     </main>
   );
