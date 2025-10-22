@@ -1,17 +1,23 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
+export default {
   server: {
-    host: 'localhost',      // ← 여기 localhost
-    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8787', // ← 여기 localhost
+        target: 'https://runcrew-backend.popple1101.workers.dev',
         changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api/, ''),
+        secure: true,
+        // 필요하면 쿠키 도메인 재작성
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            const setCookie = proxyRes.headers['set-cookie'];
+            if (setCookie) {
+              // Domain=... 있으면 제거 → localhost에 쿠키 심기
+              proxyRes.headers['set-cookie'] = setCookie.map(c =>
+                c.replace(/;\s*Domain=[^;]+/i, '')
+              );
+            }
+          });
+        },
       },
     },
   },
-})
+};

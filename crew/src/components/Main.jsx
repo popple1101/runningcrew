@@ -1,3 +1,4 @@
+import React from "react"; // ← 추가
 import KakaoLoginButton from "./KakaoLoginButton";
 import "./main.css";
 
@@ -6,7 +7,7 @@ export default function Main() {
     <main className="page">
       <div className="stack">
         <img
-          src="/logo.png" // 또는 import 로 가져와도 됨
+          src="/logo.png"
           alt="RunPick"
           className="logo"
           width="360"
