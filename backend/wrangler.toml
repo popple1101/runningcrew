@@ -20,3 +20,8 @@ KAKAO_CLIENT_ID    = "13586043acea1473bd2a63898f8b9043"
 KAKAO_REDIRECT_URI = "http://localhost:8787/auth/kakao/callback"
 # client secret은 secret로!
 # KAKAO_CLIENT_SECRET 는 toml에 두지 않음
+
+# === naver OAuth ===
+NAVER_CLIENT_ID = "5pjMk2CwJuEHjY3xjYTL"
+NAVER_CLIENT_SECRET = "Rc6HZsUEZn"
+NAVER_REDIRECT_URI = "https://runcrew-backend.popple1101.workers.dev/auth/naver/callback"
