@@ -1,9 +1,10 @@
+# .github/workflows/deploy.yml
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]   # 배포 브랜치
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -22,20 +23,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      # vite.config.js 에서 base: '/runningcrew/' 로 설정되어 있어야 함
+          node-version: 20            # ⬅️ cache 옵션 제거
+      - run: npm install              # ⬅️ lock 없으니 install 사용
       - name: Build
         run: npm run build
         env:
-          # 🔑 프론트에서 백엔드로 붙는 주소 (배포용)
           VITE_API_BASE: https://runcrew-backend.popple1101.workers.dev/api
           VITE_AUTH_BASE: https://runcrew-backend.popple1101.workers.dev/auth
-      # SPA 라우팅용 404.html
       - name: Create 404 for SPA
         run: cp dist/index.html dist/404.html
-      # Pages 아티팩트 업로드
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
