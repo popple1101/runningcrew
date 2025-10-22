@@ -1,6 +1,7 @@
 export default function KakaoLoginButton({ icon = "/kakao-symbol.png" }) {
-  const loginUrl = `${import.meta.env.VITE_API_BASE}/auth/kakao`;
-
+  const base = import.meta.env.VITE_API_BASE;
+  const redirect = encodeURIComponent(`${location.origin}/app`);
+  const loginUrl = `${base}/auth/kakao?redirect=${redirect}`;
   return (
     <a href={loginUrl} className="kakao-btn" aria-label="카카오로 시작하기">
       {/* PNG/SVG 아무거나 가능. 색 강제하고 싶으면 아래 '마스크 방식' 주석 참고 */}
