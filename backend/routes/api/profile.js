@@ -56,17 +56,16 @@ app.put('/', async (c) => {
     .from('users')
     .update({
       nickname,
-      age,
-      gender,
-      lat,
-      lng,
-      // accuracy, // 임시로 주석 처리
-      region_verified,
-      crew_choice,
+      // age, // 임시로 주석 처리
+      // gender, // 임시로 주석 처리
+      // lat, // 임시로 주석 처리
+      // lng, // 임시로 주석 처리
+      // region_verified, // 임시로 주석 처리
+      // crew_choice, // 임시로 주석 처리
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
-    .select('id, nickname, age, gender, region_verified, lat, lng, crew_choice')
+    .select('id, nickname')
     .single();
 
   if (error) {
@@ -85,7 +84,7 @@ app.get('/', async (c) => {
   const sb = getSupabase(c);
   const { data, error } = await sb
     .from('users')
-    .select('id, nickname, age, gender, region_verified, lat, lng, crew_choice')
+    .select('id, nickname')
     .eq('id', userId)
     .single();
 
