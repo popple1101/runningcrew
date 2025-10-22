@@ -6,13 +6,11 @@ on:
     branches: [ main ]   # 배포 브랜치
   workflow_dispatch:
 
-# GitHub Pages 권한
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Pages는 동시 배포 1개만
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -25,9 +23,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
       - run: npm ci
       # vite.config.js 에서 base: '/runningcrew/' 로 설정되어 있어야 함
-      - run: npm run build
+      - name: Build
+        run: npm run build
+        env:
+          # 🔑 프론트에서 백엔드로 붙는 주소 (배포용)
+          VITE_API_BASE: https://runcrew-backend.popple1101.workers.dev/api
+          VITE_AUTH_BASE: https://runcrew-backend.popple1101.workers.dev/auth
       # SPA 라우팅용 404.html
       - name: Create 404 for SPA
         run: cp dist/index.html dist/404.html
@@ -35,12 +39,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      # 아래 outputs 참조 때문에 에디터가 종종 밑줄 긋지만 정상 동작함
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment

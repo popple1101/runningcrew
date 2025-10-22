@@ -1854,10 +1854,10 @@ var require_cjs = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-cgPR5A/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-hUBS4e/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-cgPR5A/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-hUBS4e/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.js
@@ -2640,14 +2640,14 @@ var Hono = class {
   }
   #notFoundHandler = notFoundHandler;
   errorHandler = errorHandler;
-  route(path, app6) {
+  route(path, app7) {
     const subApp = this.basePath(path);
-    app6.routes.map((r) => {
+    app7.routes.map((r) => {
       let handler;
-      if (app6.errorHandler === errorHandler) {
+      if (app7.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app6.errorHandler)(c, () => r.handler(c, next))).res, "handler");
+        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app7.errorHandler)(c, () => r.handler(c, next))).res, "handler");
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler);
@@ -3449,6 +3449,95 @@ var Hono2 = class extends Hono {
   }
 };
 
+// node_modules/hono/dist/middleware/cors/index.js
+init_modules_watch_stub();
+var cors = /* @__PURE__ */ __name((options) => {
+  const defaults = {
+    origin: "*",
+    allowMethods: ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH"],
+    allowHeaders: [],
+    exposeHeaders: []
+  };
+  const opts = {
+    ...defaults,
+    ...options
+  };
+  const findAllowOrigin = ((optsOrigin) => {
+    if (typeof optsOrigin === "string") {
+      if (optsOrigin === "*") {
+        return () => optsOrigin;
+      } else {
+        return (origin) => optsOrigin === origin ? origin : null;
+      }
+    } else if (typeof optsOrigin === "function") {
+      return optsOrigin;
+    } else {
+      return (origin) => optsOrigin.includes(origin) ? origin : null;
+    }
+  })(opts.origin);
+  const findAllowMethods = ((optsAllowMethods) => {
+    if (typeof optsAllowMethods === "function") {
+      return optsAllowMethods;
+    } else if (Array.isArray(optsAllowMethods)) {
+      return () => optsAllowMethods;
+    } else {
+      return () => [];
+    }
+  })(opts.allowMethods);
+  return /* @__PURE__ */ __name(async function cors2(c, next) {
+    function set(key, value) {
+      c.res.headers.set(key, value);
+    }
+    __name(set, "set");
+    const allowOrigin = await findAllowOrigin(c.req.header("origin") || "", c);
+    if (allowOrigin) {
+      set("Access-Control-Allow-Origin", allowOrigin);
+    }
+    if (opts.origin !== "*") {
+      const existingVary = c.req.header("Vary");
+      if (existingVary) {
+        set("Vary", existingVary);
+      } else {
+        set("Vary", "Origin");
+      }
+    }
+    if (opts.credentials) {
+      set("Access-Control-Allow-Credentials", "true");
+    }
+    if (opts.exposeHeaders?.length) {
+      set("Access-Control-Expose-Headers", opts.exposeHeaders.join(","));
+    }
+    if (c.req.method === "OPTIONS") {
+      if (opts.maxAge != null) {
+        set("Access-Control-Max-Age", opts.maxAge.toString());
+      }
+      const allowMethods = await findAllowMethods(c.req.header("origin") || "", c);
+      if (allowMethods.length) {
+        set("Access-Control-Allow-Methods", allowMethods.join(","));
+      }
+      let headers = opts.allowHeaders;
+      if (!headers?.length) {
+        const requestHeaders = c.req.header("Access-Control-Request-Headers");
+        if (requestHeaders) {
+          headers = requestHeaders.split(/\s*,\s*/);
+        }
+      }
+      if (headers?.length) {
+        set("Access-Control-Allow-Headers", headers.join(","));
+        c.res.headers.append("Vary", "Access-Control-Request-Headers");
+      }
+      c.res.headers.delete("Content-Length");
+      c.res.headers.delete("Content-Type");
+      return new Response(null, {
+        headers: c.res.headers,
+        status: 204,
+        statusText: "No Content"
+      });
+    }
+    await next();
+  }, "cors2");
+}, "cors");
+
 // routes/auth/kakao.js
 init_modules_watch_stub();
 
@@ -3593,6 +3682,11 @@ var setCookie = /* @__PURE__ */ __name((c, name, value, opt) => {
   const cookie = generateCookie(name, value, opt);
   c.header("Set-Cookie", cookie, { append: true });
 }, "setCookie");
+var deleteCookie = /* @__PURE__ */ __name((c, name, opt) => {
+  const deletedCookie = getCookie(c, name, opt?.prefix);
+  setCookie(c, name, "", { ...opt, maxAge: 0 });
+  return deletedCookie;
+}, "deleteCookie");
 
 // core/jwt.js
 init_modules_watch_stub();
@@ -14388,45 +14482,13 @@ app.get("/callback", async (c) => {
 });
 var kakao_default = app;
 
-// routes/auth/session.js
-init_modules_watch_stub();
-var app2 = new Hono2();
-app2.get("/", async (c) => {
-  const auth = c.req.header("authorization");
-  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : auth?.split(" ")[1];
-  const token = bearer || getCookie(c, "rc_session");
-  if (!token) return c.text("Unauthorized: no token", 401);
-  let payload;
-  try {
-    payload = await verifyJWT(token, c.env);
-    console.log("Session - JWT payload:", payload);
-  } catch (e) {
-    console.log("Session - JWT verification failed:", e.message);
-    return c.text("Unauthorized: jwt error - " + e.message, 401);
-  }
-  console.log("Session - SUPABASE_URL:", c.env.SUPABASE_URL ? "present" : "missing");
-  console.log("Session - SUPABASE_SERVICE_ROLE_KEY:", c.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing");
-  if (!c.env.SUPABASE_URL || !c.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return c.text("Server misconfig: SUPABASE env missing", 500);
-  }
-  const supa = getSupabase(c);
-  const userId = String(payload.sub);
-  console.log("Session - Attempting DB query for userId:", userId);
-  const { data, error } = await supa.from("users").select("id, provider, provider_sub, nickname, email, photo_url").eq("id", userId).single();
-  console.log("Session - DB query result:", { data, error, userId });
-  if (error?.code === "PGRST116") return c.body(null, 204);
-  if (error) return c.text("DB Error: " + error.message, 500);
-  return c.json({ user: data ?? null });
-});
-var session_default = app2;
-
 // routes/auth/naver.js
 init_modules_watch_stub();
 var AUTH = "https://nid.naver.com/oauth2.0/authorize";
 var TOKEN = "https://nid.naver.com/oauth2.0/token";
 var ME = "https://openapi.naver.com/v1/nid/me";
-var app3 = new Hono2();
-app3.get("/", async (c) => {
+var app2 = new Hono2();
+app2.get("/", async (c) => {
   const redirect = c.req.query("redirect") || "/";
   const state = await signState({ redirect }, c.env);
   const url = new URL(AUTH);
@@ -14436,7 +14498,7 @@ app3.get("/", async (c) => {
   url.searchParams.set("state", state);
   return c.redirect(url.toString(), 302);
 });
-app3.get("/callback", async (c) => {
+app2.get("/callback", async (c) => {
   const url = new URL(c.req.url);
   const code = url.searchParams.get("code");
   const stateToken = url.searchParams.get("state");
@@ -14523,11 +14585,52 @@ app3.get("/callback", async (c) => {
   const dest = state.redirect || "/";
   return c.redirect(dest, 302);
 });
-var naver_default = app3;
+var naver_default = app2;
+
+// routes/auth/logout.js
+init_modules_watch_stub();
+var app3 = new Hono2();
+app3.post("/", (c) => {
+  deleteCookie(c, "rc_session", { path: "/", secure: true, httpOnly: true, sameSite: "Lax" });
+  return c.json({ ok: true });
+});
+var logout_default = app3;
+
+// routes/auth/session.js
+init_modules_watch_stub();
+var app4 = new Hono2();
+app4.get("/", async (c) => {
+  const auth = c.req.header("authorization");
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : auth?.split(" ")[1];
+  const token = bearer || getCookie(c, "rc_session");
+  if (!token) return c.text("Unauthorized: no token", 401);
+  let payload;
+  try {
+    payload = await verifyJWT(token, c.env);
+    console.log("Session - JWT payload:", payload);
+  } catch (e) {
+    console.log("Session - JWT verification failed:", e.message);
+    return c.text("Unauthorized: jwt error - " + e.message, 401);
+  }
+  console.log("Session - SUPABASE_URL:", c.env.SUPABASE_URL ? "present" : "missing");
+  console.log("Session - SUPABASE_SERVICE_ROLE_KEY:", c.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing");
+  if (!c.env.SUPABASE_URL || !c.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return c.text("Server misconfig: SUPABASE env missing", 500);
+  }
+  const supa = getSupabase(c);
+  const userId = String(payload.sub);
+  console.log("Session - Attempting DB query for userId:", userId);
+  const { data, error } = await supa.from("users").select("id, provider, provider_sub, nickname, email, photo_url").eq("id", userId).single();
+  console.log("Session - DB query result:", { data, error, userId });
+  if (error?.code === "PGRST116") return c.body(null, 204);
+  if (error) return c.text("DB Error: " + error.message, 500);
+  return c.json({ user: data ?? null });
+});
+var session_default = app4;
 
 // routes/api/profile.js
 init_modules_watch_stub();
-var app4 = new Hono2();
+var app5 = new Hono2();
 async function requireUserId(c) {
   const token = getCookie(c, "rc_session");
   if (!token) return null;
@@ -14543,7 +14646,7 @@ async function requireUserId(c) {
   }
 }
 __name(requireUserId, "requireUserId");
-app4.put("/", async (c) => {
+app5.put("/", async (c) => {
   const userId = await requireUserId(c);
   if (!userId) return c.text("Unauthorized", 401);
   let body;
@@ -14558,6 +14661,7 @@ app4.put("/", async (c) => {
   const lat = typeof body.lat === "number" ? body.lat : null;
   const lng = typeof body.lng === "number" ? body.lng : null;
   const accuracy = typeof body.accuracy === "number" ? body.accuracy : null;
+  const crew_choice = ["have", "create", "browse"].includes(body.crew_choice) ? body.crew_choice : null;
   if (!nickname || !age || !gender) {
     return c.text("nickname/age/gender required", 400);
   }
@@ -14569,23 +14673,59 @@ app4.put("/", async (c) => {
     gender,
     lat,
     lng,
-    accuracy,
+    // accuracy, // 임시로 주석 처리
     region_verified,
+    crew_choice,
     updated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }).eq("id", userId).select("id, nickname, age, gender, region_verified, lat, lng, accuracy").single();
-  if (error) return c.text("DB error: " + error.message, 500);
+  }).eq("id", userId).select("id, nickname, age, gender, region_verified, lat, lng, crew_choice").single();
+  if (error) {
+    console.error("Profile update error:", error);
+    return c.text("DB error: " + error.message, 500);
+  }
   return c.json({ ok: true, user: data });
 });
-var profile_default = app4;
+app5.get("/", async (c) => {
+  const userId = await requireUserId(c);
+  if (!userId) return c.text("Unauthorized", 401);
+  const sb = getSupabase(c);
+  const { data, error } = await sb.from("users").select("id, nickname, age, gender, region_verified, lat, lng, crew_choice").eq("id", userId).single();
+  if (error) {
+    console.error("Profile fetch error:", error);
+    return c.text("DB error: " + error.message, 500);
+  }
+  return c.json({ ok: true, user: data });
+});
+var profile_default = app5;
 
 // src/index.js
-var app5 = new Hono2();
-app5.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
-app5.route("/auth/naver", naver_default);
-app5.route("/auth/kakao", kakao_default);
-app5.route("/me", session_default);
-app5.route("/api/profile", profile_default);
-var src_default = app5;
+var app6 = new Hono2();
+app6.use("/*", (c, next) => {
+  const allowList = (c.env.CORS_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const originFn = /* @__PURE__ */ __name((origin) => {
+    if (!origin) return "";
+    if (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")) {
+      return origin;
+    }
+    if (allowList.length === 0) return origin;
+    return allowList.includes(origin) ? origin : "";
+  }, "originFn");
+  return cors({
+    origin: originFn,
+    credentials: true,
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400
+    // preflight 캐시(선택)
+  })(c, next);
+});
+app6.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
+app6.route("/auth/kakao", kakao_default);
+app6.route("/auth/naver", naver_default);
+app6.route("/auth/logout", logout_default);
+app6.route("/api/me", session_default);
+app6.route("/me", session_default);
+app6.route("/api/profile", profile_default);
+var src_default = app6;
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_modules_watch_stub();
@@ -14630,7 +14770,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-cgPR5A/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-hUBS4e/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14663,7 +14803,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-cgPR5A/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-hUBS4e/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

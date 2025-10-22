@@ -3,25 +3,21 @@ main = "src/index.js"
 compatibility_date = "2024-11-20"
 
 [vars]
-# === JWT / 세션 ===
+# JWT (식별자만 노출, 키 값은 secret로)
 JWT_ISSUER   = "runcrew.app"
 JWT_AUDIENCE = "runcrew-users"
-JWT_SECRET   = "change_this_to_a_long_random_string"
-# (코드가 AUTH_SECRET를 쓴다면 임시 호환)
-AUTH_SECRET  = "change_this_to_a_long_random_string"
 
-# === Supabase ===
-# 서비스 롤 키는 toml에 넣지 말고 secret로!
+# Supabase (서비스 키는 secret!)
 SUPABASE_URL = "https://yxfkpddrakhnccpqttzl.supabase.co"
 
-# === Kakao OAuth ===
-KAKAO_CLIENT_ID    = "13586043acea1473bd2a63898f8b9043"
-# 콜백은 '백엔드'로 (서버사이드 토큰교환)
-KAKAO_REDIRECT_URI = "http://localhost:8787/auth/kakao/callback"
-# client secret은 secret로!
-# KAKAO_CLIENT_SECRET 는 toml에 두지 않음
+# GH Pages CORS 허용
+CORS_ORIGINS = "https://popple1101.github.io,https://popple1101.github.io/runningcrew"
 
-# === naver OAuth ===
-NAVER_CLIENT_ID = "5pjMk2CwJuEHjY3xjYTL"
-NAVER_CLIENT_SECRET = "Rc6HZsUEZn"
+# ── 기본(production) 콜백 ──
+KAKAO_REDIRECT_URI = "https://runcrew-backend.popple1101.workers.dev/auth/kakao/callback"
 NAVER_REDIRECT_URI = "https://runcrew-backend.popple1101.workers.dev/auth/naver/callback"
+
+# ── 로컬 전용 env (원하면 사용) ──
+[env.dev.vars]
+KAKAO_REDIRECT_URI = "http://localhost:8787/auth/kakao/callback"
+NAVER_REDIRECT_URI = "http://localhost:8787/auth/naver/callback"
