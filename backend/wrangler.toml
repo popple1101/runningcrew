@@ -6,6 +6,7 @@ compatibility_date = "2024-11-20"
 # JWT (식별자만 노출, 키 값은 secret로)
 JWT_ISSUER   = "runcrew.app"
 JWT_AUDIENCE = "runcrew-users"
+AUTH_SECRET  = "3249a0d73ac68118509d6dabdade7cdad5c80f08e43c6be3cda06471ec495cbd"
 
 # Supabase (서비스 키는 secret!)
 SUPABASE_URL = "https://yxfkpddrakhnccpqttzl.supabase.co"
