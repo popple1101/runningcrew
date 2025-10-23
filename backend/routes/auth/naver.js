@@ -132,18 +132,47 @@ app.get('/callback', async (c) => {
     last_login_at: new Date().toISOString(),
   }
 
-  const { data: user, error } = await supa.from('users')
-    .upsert(row, { onConflict: 'provider_sub' })
+  // 기존 사용자 확인
+  const { data: existing } = await supa
+    .from('users')
     .select('id')
-    .single()
+    .eq('provider', 'naver')
+    .eq('provider_sub', naverId)
+    .maybeSingle()
 
-  if (error) {
-    console.error('[DB upsert] error=', error)
-    return c.text('DB error: ' + error.message, 500)
+  let user
+  if (existing) {
+    // 기존 사용자 업데이트
+    const { data: updated, error } = await supa
+      .from('users')
+      .update({
+        nickname, email, photo_url,
+        last_login_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select('id')
+      .single()
+    if (error) {
+      console.error('[DB update] error=', error)
+      return c.text('DB error: ' + error.message, 500)
+    }
+    user = updated
+  } else {
+    // 새 사용자 생성
+    const { data: created, error } = await supa
+      .from('users')
+      .insert(row)
+      .select('id')
+      .single()
+    if (error) {
+      console.error('[DB insert] error=', error)
+      return c.text('DB error: ' + error.message, 500)
+    }
+    user = created
   }
 
-  // 세션 쿠키
-  const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30)
+  // 세션 쿠키 (UUID는 이미 문자열)
+  const jwt = await signJWT({ sub: user.id, nickname }, c.env, 60 * 60 * 24 * 30)
   const host = new URL(c.req.url).hostname
   const isLocal = host === 'localhost' || host === '127.0.0.1'
   setCookie(c, 'rc_session', jwt, {
