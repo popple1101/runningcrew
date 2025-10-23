@@ -39,7 +39,7 @@ app.get('/', async (c) => {
   
   const { data, error } = await supa
     .from('users')
-    .select('id, provider, provider_sub, nickname, email, photo_url')
+    .select('id, provider, provider_sub, nickname, email, photo_url, age, gender, lat, lng, accuracy, region_verified, crew_choice')
     .eq('id', userId)
     .single()
 
