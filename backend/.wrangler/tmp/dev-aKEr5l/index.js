@@ -1854,10 +1854,10 @@ var require_cjs = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-TyC22K/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-i9Dite/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-TyC22K/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-i9Dite/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.js
@@ -14510,7 +14510,7 @@ var AUTH = "https://nid.naver.com/oauth2.0/authorize";
 var TOKEN = "https://nid.naver.com/oauth2.0/token";
 var ME = "https://openapi.naver.com/v1/nid/me";
 var app2 = new Hono2();
-var getAuthOrigin2 = /* @__PURE__ */ __name((c) => c.env.AUTH_ORIGIN || "http://127.0.0.1:8787", "getAuthOrigin");
+var getAuthOrigin2 = /* @__PURE__ */ __name((c) => c.env.AUTH_ORIGIN || "http://localhost:8787", "getAuthOrigin");
 var pickNaverCallback = /* @__PURE__ */ __name((c) => c.env.NAVER_REDIRECT_URI && /\/auth\/naver\/callback$/.test(c.env.NAVER_REDIRECT_URI) ? c.env.NAVER_REDIRECT_URI : `${getAuthOrigin2(c)}/auth/naver/callback`, "pickNaverCallback");
 app2.get("/", async (c) => {
   const redirect = c.req.query("redirect") || "/";
@@ -14521,7 +14521,8 @@ app2.get("/", async (c) => {
   url.searchParams.set("redirect_uri", callbackUrl);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
-  url.searchParams.set("scope", "profile email");
+  url.searchParams.set("scope", "name nickname email profile_image");
+  console.log("[Naver Auth] redirect_uri =", callbackUrl);
   return c.redirect(url.toString(), 302);
 });
 app2.get("/callback", async (c) => {
@@ -14532,7 +14533,8 @@ app2.get("/callback", async (c) => {
   let state;
   try {
     state = await verifyState(stateToken, c.env);
-  } catch {
+  } catch (e) {
+    console.error("[Naver State] verify failed:", e?.message);
     return c.text("Unauthorized: bad state", 401);
   }
   const callbackUrl = pickNaverCallback(c);
@@ -14553,31 +14555,43 @@ app2.get("/callback", async (c) => {
   });
   const tText = await tRes.text();
   if (!tRes.ok) {
-    console.error("[Naver Token] Error:", tRes.status, tText);
+    console.error("[Naver Token] HTTP=", tRes.status, "BODY=", tText);
     return c.text(`Naver token error: ${tRes.status} ${tText}`, 502);
   }
   let tokenJson;
   try {
     tokenJson = JSON.parse(tText);
   } catch {
+    console.error("[Naver Token] JSON parse error:", tText);
     return c.text("Naver token parse error", 502);
   }
-  const { access_token } = tokenJson || {};
-  if (!access_token) return c.text("Naver token error: no access_token", 502);
-  const meRes = await fetch(ME, { headers: { Authorization: `Bearer ${access_token}` } });
+  const { access_token, token_type, expires_in } = tokenJson || {};
+  if (!access_token) {
+    console.error("[Naver Token] no access_token:", tokenJson);
+    return c.text("Naver token error: no access_token", 502);
+  }
+  console.log("[Naver Token] type=", token_type, "exp=", expires_in, "token.head=", String(access_token).slice(0, 6));
+  const meRes = await fetch(ME, {
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      "X-Naver-Client-Id": c.env.NAVER_CLIENT_ID,
+      "X-Naver-Client-Secret": c.env.NAVER_CLIENT_SECRET
+    }
+  });
   const meText = await meRes.text();
   if (!meRes.ok) {
-    console.error("[Naver Me] Error:", meRes.status, meText);
+    console.error("[Naver Me] HTTP=", meRes.status, "BODY=", meText);
     return c.text(`Naver me error: ${meRes.status} ${meText}`, 502);
   }
   let me;
   try {
     me = JSON.parse(meText);
   } catch {
+    console.error("[Naver Me] JSON parse error:", meText);
     return c.text("Naver me parse error", 502);
   }
   if (me.resultcode !== "00") {
-    console.error("[Naver Me] Result not ok:", me);
+    console.error("[Naver Me] result not ok:", me);
     return c.text("Naver profile fetch failed", 502);
   }
   const r = me.response || {};
@@ -14595,7 +14609,10 @@ app2.get("/callback", async (c) => {
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
   const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
-  if (error) return c.text("DB error: " + error.message, 500);
+  if (error) {
+    console.error("[DB upsert] error=", error);
+    return c.text("DB error: " + error.message, 500);
+  }
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
   const host = new URL(c.req.url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
@@ -14604,7 +14621,6 @@ app2.get("/callback", async (c) => {
     httpOnly: true,
     sameSite: isLocal ? "Lax" : "None",
     secure: isLocal ? false : true,
-    // 배포(HTTPS)에서만 true
     maxAge: 60 * 60 * 24 * 30
   });
   const fallback = c.env.APP_REDIRECT_DEFAULT || "https://popple1101.github.io/runningcrew/app";
@@ -14796,7 +14812,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-TyC22K/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-i9Dite/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14829,7 +14845,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-TyC22K/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-i9Dite/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
