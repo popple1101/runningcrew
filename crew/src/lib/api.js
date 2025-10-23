@@ -43,7 +43,7 @@ export async function postLogout() {
 
 // 프로필 저장/업데이트
 export async function putProfile(payload) {
-  const r = await fetch(`${API}/api/profile`, {
+  const r = await fetch(`${API}/profile`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -58,7 +58,7 @@ export async function putProfile(payload) {
 
 // 프로필 조회
 export async function getProfile() {
-  const r = await fetch(`${API}/api/profile`, {
+  const r = await fetch(`${API}/profile`, {
     method: 'GET',
     credentials: 'include',
   });

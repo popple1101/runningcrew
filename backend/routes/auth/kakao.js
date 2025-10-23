@@ -45,8 +45,14 @@ app.get('/callback', async (c) => {
 
   // state 검증
   let state
-  try { state = await verifyState(stateToken, c.env) }
-  catch { return c.text('Unauthorized: bad state', 401) }
+  try { 
+    state = await verifyState(stateToken, c.env)
+    console.log('[Kakao Callback] State verified:', state)
+  }
+  catch (err) { 
+    console.error('[Kakao Callback] State verification failed:', err.message)
+    return c.text('Unauthorized: bad state', 401) 
+  }
 
   // 토큰 교환
   const callbackUrl = pickKakaoCallback(c)
@@ -72,12 +78,19 @@ app.get('/callback', async (c) => {
   try { ;({ access_token } = JSON.parse(tokBody)) } catch { return c.text('Kakao token parse error', 502) }
 
   // 사용자 정보
+  console.log('[Kakao Callback] Fetching user info...')
   const meRes = await fetch(`${KAPI}/v2/user/me`, { headers: { Authorization: `Bearer ${access_token}` } })
   const meBody = await meRes.text()
-  if (!meRes.ok) return c.text(`Kakao me error: ${meRes.status} ${meBody}`, 502)
+  if (!meRes.ok) {
+    console.error('[Kakao Callback] Kakao me error:', meRes.status, meBody)
+    return c.text(`Kakao me error: ${meRes.status} ${meBody}`, 502)
+  }
 
   let me
-  try { me = JSON.parse(meBody) } catch { return c.text('Kakao me parse error', 502) }
+  try { me = JSON.parse(meBody) } catch (err) { 
+    console.error('[Kakao Callback] Kakao me parse error:', err.message)
+    return c.text('Kakao me parse error', 502) 
+  }
 
   const kakaoId = String(me.id)
   const nickname =
@@ -88,16 +101,30 @@ app.get('/callback', async (c) => {
     me.kakao_account?.profile?.profile_image_url ||
     me.properties?.profile_image || null
 
+  console.log('[Kakao Callback] User info:', { kakaoId, nickname, email })
+
   // DB upsert
+  console.log('[Kakao Callback] Upserting to DB...')
   const supa = getSupabase(c)
   const row = { provider: 'kakao', provider_sub: kakaoId, nickname, email, photo_url, last_login_at: new Date().toISOString() }
   const { data: user, error } = await supa.from('users').upsert(row, { onConflict: 'provider_sub' }).select('id').single()
-  if (error) return c.text('DB error: ' + error.message, 500)
+  if (error) {
+    console.error('[Kakao Callback] DB error:', error.message, error)
+    return c.text('DB error: ' + error.message, 500)
+  }
+  console.log('[Kakao Callback] DB upsert success, user ID:', user.id)
 
-  // 세션 쿠키
+  // 세션 쿠키 (Cross-Site 지원)
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30)
   const isLocal = new URL(c.req.url).hostname === 'localhost'
-  setCookie(c, 'rc_session', jwt, { path: '/', httpOnly: true, sameSite: 'Lax', secure: !isLocal, maxAge: 60 * 60 * 24 * 30 })
+  setCookie(c, 'rc_session', jwt, { 
+    path: '/', 
+    httpOnly: true, 
+    sameSite: isLocal ? 'Lax' : 'None',  // Cross-site에서는 None 필요
+    secure: true,  // SameSite=None은 Secure 필수
+    maxAge: 60 * 60 * 24 * 30 
+  })
+  console.log('[Kakao Callback] Cookie set with SameSite:', isLocal ? 'Lax' : 'None')
 
   // 최종 리다이렉트
   const fallback = c.env.APP_REDIRECT_DEFAULT || 'https://popple1101.github.io/runningcrew/app'
