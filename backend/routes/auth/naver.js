@@ -117,14 +117,14 @@ app.get('/callback', async (c) => {
     return c.text('DB error: ' + error.message, 500)
   }
 
-  // 세션 쿠키 발급 (DB user.id 기준)
+  // 세션 쿠키 발급 (DB user.id 기준, Cross-Site 지원)
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30)
   const isLocal = new URL(c.req.url).hostname === 'localhost'
   setCookie(c, 'rc_session', jwt, {
     path: '/',
     httpOnly: true,
-    sameSite: 'Lax',
-    secure: !isLocal,
+    sameSite: isLocal ? 'Lax' : 'None',  // Cross-site에서는 None 필요
+    secure: true,  // SameSite=None은 Secure 필수
     maxAge: 60 * 60 * 24 * 30,
   })
 

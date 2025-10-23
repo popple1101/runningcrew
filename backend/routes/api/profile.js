@@ -56,16 +56,17 @@ app.put('/', async (c) => {
     .from('users')
     .update({
       nickname,
-      // age, // 임시로 주석 처리
-      // gender, // 임시로 주석 처리
-      // lat, // 임시로 주석 처리
-      // lng, // 임시로 주석 처리
-      // region_verified, // 임시로 주석 처리
-      // crew_choice, // 임시로 주석 처리
+      age,
+      gender,
+      lat,
+      lng,
+      accuracy,
+      region_verified,
+      crew_choice,
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
-    .select('id, nickname')
+    .select('*')
     .single();
 
   if (error) {
