@@ -14510,20 +14510,24 @@ var AUTH = "https://nid.naver.com/oauth2.0/authorize";
 var TOKEN = "https://nid.naver.com/oauth2.0/token";
 var ME = "https://openapi.naver.com/v1/nid/me";
 var app2 = new Hono2();
+var getAuthOrigin2 = /* @__PURE__ */ __name((c) => c.env.AUTH_ORIGIN || "http://127.0.0.1:8787", "getAuthOrigin");
+var pickNaverCallback = /* @__PURE__ */ __name((c) => c.env.NAVER_REDIRECT_URI && /\/auth\/naver\/callback$/.test(c.env.NAVER_REDIRECT_URI) ? c.env.NAVER_REDIRECT_URI : `${getAuthOrigin2(c)}/auth/naver/callback`, "pickNaverCallback");
 app2.get("/", async (c) => {
   const redirect = c.req.query("redirect") || "/";
   const state = await signState({ redirect }, c.env);
+  const callbackUrl = pickNaverCallback(c);
   const url = new URL(AUTH);
   url.searchParams.set("client_id", c.env.NAVER_CLIENT_ID);
-  url.searchParams.set("redirect_uri", c.env.NAVER_REDIRECT_URI);
+  url.searchParams.set("redirect_uri", callbackUrl);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
+  url.searchParams.set("scope", "profile email");
   return c.redirect(url.toString(), 302);
 });
 app2.get("/callback", async (c) => {
-  const url = new URL(c.req.url);
-  const code = url.searchParams.get("code");
-  const stateToken = url.searchParams.get("state");
+  const u = new URL(c.req.url);
+  const code = u.searchParams.get("code");
+  const stateToken = u.searchParams.get("state");
   if (!code || !stateToken) return c.text("Bad Request: missing code/state", 400);
   let state;
   try {
@@ -14531,82 +14535,80 @@ app2.get("/callback", async (c) => {
   } catch {
     return c.text("Unauthorized: bad state", 401);
   }
-  const form = new URLSearchParams();
-  form.set("grant_type", "authorization_code");
-  form.set("client_id", c.env.NAVER_CLIENT_ID);
-  if (c.env.NAVER_CLIENT_SECRET) form.set("client_secret", c.env.NAVER_CLIENT_SECRET);
-  form.set("redirect_uri", c.env.NAVER_REDIRECT_URI);
-  form.set("code", code);
-  form.set("state", stateToken);
-  const tok = await fetch(TOKEN, {
+  const callbackUrl = pickNaverCallback(c);
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: c.env.NAVER_CLIENT_ID,
+    redirect_uri: callbackUrl,
+    code,
+    state: stateToken
+  });
+  if (c.env.NAVER_CLIENT_SECRET) {
+    body.set("client_secret", c.env.NAVER_CLIENT_SECRET);
+  }
+  const tRes = await fetch(TOKEN, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-    body: form
+    body
   });
-  const tokBody = await tok.text();
-  if (!tok.ok) {
-    console.error("Naver token error:", tok.status, tokBody);
-    return c.text(`Naver token error: ${tok.status} ${tokBody}`, 502);
+  const tText = await tRes.text();
+  if (!tRes.ok) {
+    console.error("[Naver Token] Error:", tRes.status, tText);
+    return c.text(`Naver token error: ${tRes.status} ${tText}`, 502);
   }
-  let access_token;
+  let tokenJson;
   try {
-    ;
-    ({ access_token } = JSON.parse(tokBody));
+    tokenJson = JSON.parse(tText);
   } catch {
-    console.error("Naver token parse error:", tokBody);
     return c.text("Naver token parse error", 502);
   }
-  const meRes = await fetch(ME, {
-    headers: { Authorization: `Bearer ${access_token}` }
-  });
-  const meBody = await meRes.text();
+  const { access_token } = tokenJson || {};
+  if (!access_token) return c.text("Naver token error: no access_token", 502);
+  const meRes = await fetch(ME, { headers: { Authorization: `Bearer ${access_token}` } });
+  const meText = await meRes.text();
   if (!meRes.ok) {
-    console.error("Naver me error:", meRes.status, meBody);
-    return c.text(`Naver me error: ${meRes.status} ${meBody}`, 502);
+    console.error("[Naver Me] Error:", meRes.status, meText);
+    return c.text(`Naver me error: ${meRes.status} ${meText}`, 502);
   }
-  let payload;
+  let me;
   try {
-    payload = JSON.parse(meBody);
+    me = JSON.parse(meText);
   } catch {
-    console.error("Naver me parse error:", meBody);
     return c.text("Naver me parse error", 502);
   }
-  if (payload.resultcode !== "00") {
-    console.error("Naver result not ok:", payload);
+  if (me.resultcode !== "00") {
+    console.error("[Naver Me] Result not ok:", me);
     return c.text("Naver profile fetch failed", 502);
   }
-  const resp = payload.response || {};
-  const naverId = String(resp.id);
-  const nickname = (resp.nickname || resp.name || "Runner").trim();
-  const email = resp.email || null;
-  const photo_url = resp.profile_image || null;
+  const r = me.response || {};
+  const naverId = String(r.id);
+  const nickname = (r.nickname || r.name || "Runner").trim();
+  const email = r.email || null;
+  const photo_url = r.profile_image || null;
   const supa = getSupabase(c);
   const row = {
     provider: "naver",
     provider_sub: naverId,
-    // 유니크
     nickname,
     email,
     photo_url,
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
   const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
-  if (error) {
-    console.error("DB upsert error:", error);
-    return c.text("DB error: " + error.message, 500);
-  }
+  if (error) return c.text("DB error: " + error.message, 500);
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
-  const isLocal = new URL(c.req.url).hostname === "localhost";
+  const host = new URL(c.req.url).hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
   setCookie(c, "rc_session", jwt, {
     path: "/",
     httpOnly: true,
     sameSite: isLocal ? "Lax" : "None",
-    // Cross-site에서는 None 필요
-    secure: true,
-    // SameSite=None은 Secure 필수
+    secure: isLocal ? false : true,
+    // 배포(HTTPS)에서만 true
     maxAge: 60 * 60 * 24 * 30
   });
-  const dest = state.redirect || "/";
+  const fallback = c.env.APP_REDIRECT_DEFAULT || "https://popple1101.github.io/runningcrew/app";
+  const dest = state?.redirect && /^https?:\/\//.test(state.redirect) ? state.redirect : fallback;
   return c.redirect(dest, 302);
 });
 var naver_default = app2;
