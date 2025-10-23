@@ -1,47 +1,54 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { postSignup, postLogin } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
-import './AuthModal.css';
+// src/components/AuthModal.jsx
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { postSignup, postLogin } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import "./AuthModal.css";
 
-export default function AuthModal({ isOpen, onClose, mode: initialMode = 'login' }) {
+export default function AuthModal({
+  isOpen,
+  onClose,
+  mode: initialMode = "login",
+}) {
   const [mode, setMode] = useState(initialMode); // 'login' or 'signup'
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    nickname: '',
-  });
+  const [form, setForm] = useState({ email: "", password: "", nickname: "" });
   const { refresh } = useAuth();
   const nav = useNavigate();
+
+  // 🔧 모달이 열릴 때마다 mode와 폼 리셋 (핵심 수정)
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setForm({ email: "", password: "", nickname: "" });
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      if (mode === 'signup') {
+      if (mode === "signup") {
         await postSignup(form.email, form.password, form.nickname);
-        alert('회원가입 성공! 로그인됩니다.');
+        await postLogin(form.email, form.password); // 가입 직후 자동 로그인
       } else {
         await postLogin(form.email, form.password);
       }
-      
-      await refresh(); // 세션 갱신
+      await refresh();
       onClose();
-      nav('/app'); // 메인 앱으로 이동
+      nav("/app");
     } catch (error) {
-      alert(error.message || '오류가 발생했습니다');
+      alert(error.message || "오류가 발생했습니다");
     } finally {
       setLoading(false);
     }
   };
 
   const switchMode = () => {
-    setMode(mode === 'login' ? 'signup' : 'login');
-    setForm({ email: '', password: '', nickname: '' });
+    setMode(mode === "login" ? "signup" : "login");
+    setForm({ email: "", password: "", nickname: "" });
   };
 
   return (
@@ -50,11 +57,10 @@ export default function AuthModal({ isOpen, onClose, mode: initialMode = 'login'
         <button className="auth-modal-close" onClick={onClose}>
           ✕
         </button>
-
-        <h2>{mode === 'login' ? '로그인' : '회원가입'}</h2>
+        <h2>{mode === "login" ? "로그인" : "회원가입"}</h2>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {mode === 'signup' && (
+          {mode === "signup" && (
             <div className="auth-field">
               <label htmlFor="nickname">닉네임</label>
               <input
@@ -87,7 +93,9 @@ export default function AuthModal({ isOpen, onClose, mode: initialMode = 'login'
             <input
               id="password"
               type="password"
-              placeholder={mode === 'signup' ? '영문+숫자 8자 이상' : '비밀번호'}
+              placeholder={
+                mode === "signup" ? "영문+숫자 8자 이상" : "비밀번호"
+              }
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
@@ -96,21 +104,21 @@ export default function AuthModal({ isOpen, onClose, mode: initialMode = 'login'
           </div>
 
           <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
+            {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
           </button>
         </form>
 
         <div className="auth-switch">
-          {mode === 'login' ? (
+          {mode === "login" ? (
             <>
-              아직 계정이 없으신가요?{' '}
+              아직 계정이 없으신가요?{" "}
               <button onClick={switchMode} className="auth-link">
                 회원가입
               </button>
             </>
           ) : (
             <>
-              이미 계정이 있으신가요?{' '}
+              이미 계정이 있으신가요?{" "}
               <button onClick={switchMode} className="auth-link">
                 로그인
               </button>
@@ -121,4 +129,3 @@ export default function AuthModal({ isOpen, onClose, mode: initialMode = 'login'
     </div>
   );
 }
-
