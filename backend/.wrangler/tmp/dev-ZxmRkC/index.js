@@ -3541,8 +3541,152 @@ var cors = /* @__PURE__ */ __name((options) => {
 // routes/auth/kakao.js
 init_modules_watch_stub();
 
-// core/cookies.js
+// node_modules/hono/dist/helper/cookie/index.js
 init_modules_watch_stub();
+
+// node_modules/hono/dist/utils/cookie.js
+init_modules_watch_stub();
+var validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/;
+var validCookieValueRegEx = /^[ !#-:<-[\]-~]*$/;
+var parse = /* @__PURE__ */ __name((cookie, name) => {
+  if (name && cookie.indexOf(name) === -1) {
+    return {};
+  }
+  const pairs = cookie.trim().split(";");
+  const parsedCookie = {};
+  for (let pairStr of pairs) {
+    pairStr = pairStr.trim();
+    const valueStartPos = pairStr.indexOf("=");
+    if (valueStartPos === -1) {
+      continue;
+    }
+    const cookieName = pairStr.substring(0, valueStartPos).trim();
+    if (name && name !== cookieName || !validCookieNameRegEx.test(cookieName)) {
+      continue;
+    }
+    let cookieValue = pairStr.substring(valueStartPos + 1).trim();
+    if (cookieValue.startsWith('"') && cookieValue.endsWith('"')) {
+      cookieValue = cookieValue.slice(1, -1);
+    }
+    if (validCookieValueRegEx.test(cookieValue)) {
+      parsedCookie[cookieName] = cookieValue.indexOf("%") !== -1 ? tryDecode(cookieValue, decodeURIComponent_) : cookieValue;
+      if (name) {
+        break;
+      }
+    }
+  }
+  return parsedCookie;
+}, "parse");
+var _serialize = /* @__PURE__ */ __name((name, value, opt = {}) => {
+  let cookie = `${name}=${value}`;
+  if (name.startsWith("__Secure-") && !opt.secure) {
+    throw new Error("__Secure- Cookie must have Secure attributes");
+  }
+  if (name.startsWith("__Host-")) {
+    if (!opt.secure) {
+      throw new Error("__Host- Cookie must have Secure attributes");
+    }
+    if (opt.path !== "/") {
+      throw new Error('__Host- Cookie must have Path attributes with "/"');
+    }
+    if (opt.domain) {
+      throw new Error("__Host- Cookie must not have Domain attributes");
+    }
+  }
+  if (opt && typeof opt.maxAge === "number" && opt.maxAge >= 0) {
+    if (opt.maxAge > 3456e4) {
+      throw new Error(
+        "Cookies Max-Age SHOULD NOT be greater than 400 days (34560000 seconds) in duration."
+      );
+    }
+    cookie += `; Max-Age=${opt.maxAge | 0}`;
+  }
+  if (opt.domain && opt.prefix !== "host") {
+    cookie += `; Domain=${opt.domain}`;
+  }
+  if (opt.path) {
+    cookie += `; Path=${opt.path}`;
+  }
+  if (opt.expires) {
+    if (opt.expires.getTime() - Date.now() > 3456e7) {
+      throw new Error(
+        "Cookies Expires SHOULD NOT be greater than 400 days (34560000 seconds) in the future."
+      );
+    }
+    cookie += `; Expires=${opt.expires.toUTCString()}`;
+  }
+  if (opt.httpOnly) {
+    cookie += "; HttpOnly";
+  }
+  if (opt.secure) {
+    cookie += "; Secure";
+  }
+  if (opt.sameSite) {
+    cookie += `; SameSite=${opt.sameSite.charAt(0).toUpperCase() + opt.sameSite.slice(1)}`;
+  }
+  if (opt.priority) {
+    cookie += `; Priority=${opt.priority.charAt(0).toUpperCase() + opt.priority.slice(1)}`;
+  }
+  if (opt.partitioned) {
+    if (!opt.secure) {
+      throw new Error("Partitioned Cookie must have Secure attributes");
+    }
+    cookie += "; Partitioned";
+  }
+  return cookie;
+}, "_serialize");
+var serialize = /* @__PURE__ */ __name((name, value, opt) => {
+  value = encodeURIComponent(value);
+  return _serialize(name, value, opt);
+}, "serialize");
+
+// node_modules/hono/dist/helper/cookie/index.js
+var getCookie = /* @__PURE__ */ __name((c, key, prefix) => {
+  const cookie = c.req.raw.headers.get("Cookie");
+  if (typeof key === "string") {
+    if (!cookie) {
+      return void 0;
+    }
+    let finalKey = key;
+    if (prefix === "secure") {
+      finalKey = "__Secure-" + key;
+    } else if (prefix === "host") {
+      finalKey = "__Host-" + key;
+    }
+    const obj2 = parse(cookie, finalKey);
+    return obj2[finalKey];
+  }
+  if (!cookie) {
+    return {};
+  }
+  const obj = parse(cookie);
+  return obj;
+}, "getCookie");
+var generateCookie = /* @__PURE__ */ __name((name, value, opt) => {
+  let cookie;
+  if (opt?.prefix === "secure") {
+    cookie = serialize("__Secure-" + name, value, { path: "/", ...opt, secure: true });
+  } else if (opt?.prefix === "host") {
+    cookie = serialize("__Host-" + name, value, {
+      ...opt,
+      path: "/",
+      secure: true,
+      domain: void 0
+    });
+  } else {
+    cookie = serialize(name, value, { path: "/", ...opt });
+  }
+  return cookie;
+}, "generateCookie");
+var setCookie = /* @__PURE__ */ __name((c, name, value, opt) => {
+  const cookie = generateCookie(name, value, opt);
+  c.header("Set-Cookie", cookie, { append: true });
+}, "setCookie");
+var deleteCookie = /* @__PURE__ */ __name((c, name, opt) => {
+  const deletedCookie = getCookie(c, name, opt?.prefix);
+  setCookie(c, name, "", { ...opt, maxAge: 0 });
+  return deletedCookie;
+}, "deleteCookie");
 
 // core/jwt.js
 init_modules_watch_stub();
@@ -4091,7 +4235,7 @@ function subtleMapping(jwk) {
   return { algorithm, keyUsages };
 }
 __name(subtleMapping, "subtleMapping");
-var parse = /* @__PURE__ */ __name(async (jwk) => {
+var parse2 = /* @__PURE__ */ __name(async (jwk) => {
   if (!jwk.alg) {
     throw new TypeError('"alg" argument is required when "jwk.alg" is not present');
   }
@@ -4106,7 +4250,7 @@ var parse = /* @__PURE__ */ __name(async (jwk) => {
   delete keyData.use;
   return webcrypto_default.subtle.importKey("jwk", keyData, ...rest);
 }, "parse");
-var jwk_to_key_default = parse;
+var jwk_to_key_default = parse2;
 
 // node_modules/jose/dist/browser/runtime/normalize_key.js
 var exportKeyValue = /* @__PURE__ */ __name((k) => decode(k), "exportKeyValue");
@@ -14242,14 +14386,8 @@ __name(getSupabase, "getSupabase");
 var KAUTH = "https://kauth.kakao.com";
 var KAPI = "https://kapi.kakao.com";
 var app = new Hono2();
-var makeCallback = /* @__PURE__ */ __name((c) => {
-  const origin = new URL(c.req.url).origin;
-  return `${origin}/auth/kakao/callback`;
-}, "makeCallback");
-var pickKakaoCallback = /* @__PURE__ */ __name((c) => {
-  const envVal = c.env.KAKAO_REDIRECT_URI;
-  return envVal && /\/auth\/kakao\/callback$/.test(envVal) ? envVal : makeCallback(c);
-}, "pickKakaoCallback");
+var getAuthOrigin = /* @__PURE__ */ __name((c) => c.env.AUTH_ORIGIN || "http://127.0.0.1:8787", "getAuthOrigin");
+var pickKakaoCallback = /* @__PURE__ */ __name((c) => c.env.KAKAO_REDIRECT_URI && /\/auth\/kakao\/callback$/.test(c.env.KAKAO_REDIRECT_URI) ? c.env.KAKAO_REDIRECT_URI : `${getAuthOrigin(c)}/auth/kakao/callback`, "pickKakaoCallback");
 app.get("/", async (c) => {
   const redirect = c.req.query("redirect") || "/";
   const state = await signState({ redirect }, c.env);
@@ -14267,7 +14405,9 @@ app.get("/callback", async (c) => {
   const url = new URL(c.req.url);
   const code = url.searchParams.get("code");
   const stateToken = url.searchParams.get("state");
-  if (!code || !stateToken) return c.text("Bad Request: missing code/state", 400);
+  if (!code || !stateToken) {
+    return c.text("Bad Request: missing code/state", 400);
+  }
   let state;
   try {
     state = await verifyState(stateToken, c.env);
@@ -14282,45 +14422,63 @@ app.get("/callback", async (c) => {
   const form = new URLSearchParams();
   form.set("grant_type", "authorization_code");
   form.set("client_id", c.env.KAKAO_CLIENT_ID);
-  if (c.env.KAKAO_CLIENT_SECRET) form.set("client_secret", c.env.KAKAO_CLIENT_SECRET);
+  if (c.env.KAKAO_CLIENT_SECRET) {
+    form.set("client_secret", c.env.KAKAO_CLIENT_SECRET);
+  }
   form.set("redirect_uri", callbackUrl);
   form.set("code", code);
-  const tok = await fetch(`${KAUTH}/oauth/token`, {
+  const tRes = await fetch(`${KAUTH}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
     body: form
   });
-  const tokBody = await tok.text();
-  if (!tok.ok) return c.text(`Kakao token error: ${tok.status} ${tokBody}`, 502);
-  let access_token;
+  const tokBody = await tRes.text();
+  if (!tRes.ok) {
+    console.error("[Kakao Token] Error:", tRes.status, tokBody);
+    return c.text(`Kakao token error: ${tRes.status} ${tokBody}`, 502);
+  }
+  let tokJson;
   try {
-    ;
-    ({ access_token } = JSON.parse(tokBody));
+    tokJson = JSON.parse(tokBody);
   } catch {
     return c.text("Kakao token parse error", 502);
   }
+  const { access_token } = tokJson || {};
+  if (!access_token) {
+    console.error("[Kakao Token] Missing access_token:", tokJson);
+    return c.text("Kakao token error: no access_token", 502);
+  }
   console.log("[Kakao Callback] Fetching user info...");
-  const meRes = await fetch(`${KAPI}/v2/user/me`, { headers: { Authorization: `Bearer ${access_token}` } });
+  const meRes = await fetch(`${KAPI}/v2/user/me`, {
+    headers: { Authorization: `Bearer ${access_token}` }
+  });
   const meBody = await meRes.text();
   if (!meRes.ok) {
-    console.error("[Kakao Callback] Kakao me error:", meRes.status, meBody);
+    console.error("[Kakao Me] Error:", meRes.status, meBody);
     return c.text(`Kakao me error: ${meRes.status} ${meBody}`, 502);
   }
   let me;
   try {
     me = JSON.parse(meBody);
   } catch (err) {
-    console.error("[Kakao Callback] Kakao me parse error:", err.message);
+    console.error("[Kakao Me] Parse error:", err.message);
     return c.text("Kakao me parse error", 502);
   }
   const kakaoId = String(me.id);
   const nickname = me.kakao_account?.profile?.nickname?.trim() || me.properties?.nickname?.trim() || "Runner";
   const email = me.kakao_account?.email || null;
   const photo_url = me.kakao_account?.profile?.profile_image_url || me.properties?.profile_image || null;
-  console.log("[Kakao Callback] User info:", { kakaoId, nickname, email });
+  console.log("[Kakao Callback] User info:", { kakaoId, nickname, email: email ?? void 0 });
   console.log("[Kakao Callback] Upserting to DB...");
   const supa = getSupabase(c);
-  const row = { provider: "kakao", provider_sub: kakaoId, nickname, email, photo_url, last_login_at: (/* @__PURE__ */ new Date()).toISOString() };
+  const row = {
+    provider: "kakao",
+    provider_sub: kakaoId,
+    nickname,
+    email,
+    photo_url,
+    last_login_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
   const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
   if (error) {
     console.error("[Kakao Callback] DB error:", error.message, error);
@@ -14328,14 +14486,15 @@ app.get("/callback", async (c) => {
   }
   console.log("[Kakao Callback] DB upsert success, user ID:", user.id);
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
-  const isLocal = new URL(c.req.url).hostname === "localhost";
+  const host = new URL(c.req.url).hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
   setCookie(c, "rc_session", jwt, {
     path: "/",
     httpOnly: true,
     sameSite: isLocal ? "Lax" : "None",
-    // Cross-site에서는 None 필요
-    secure: true,
-    // SameSite=None은 Secure 필수
+    // Cross-site에선 None 필요
+    secure: isLocal ? false : true,
+    // 로컬 HTTP에서는 Secure=false 이어야 저장됨
     maxAge: 60 * 60 * 24 * 30
   });
   console.log("[Kakao Callback] Cookie set with SameSite:", isLocal ? "Lax" : "None");
@@ -14347,155 +14506,6 @@ var kakao_default = app;
 
 // routes/auth/naver.js
 init_modules_watch_stub();
-
-// node_modules/hono/dist/helper/cookie/index.js
-init_modules_watch_stub();
-
-// node_modules/hono/dist/utils/cookie.js
-init_modules_watch_stub();
-var validCookieNameRegEx = /^[\w!#$%&'*.^`|~+-]+$/;
-var validCookieValueRegEx = /^[ !#-:<-[\]-~]*$/;
-var parse2 = /* @__PURE__ */ __name((cookie, name) => {
-  if (name && cookie.indexOf(name) === -1) {
-    return {};
-  }
-  const pairs = cookie.trim().split(";");
-  const parsedCookie = {};
-  for (let pairStr of pairs) {
-    pairStr = pairStr.trim();
-    const valueStartPos = pairStr.indexOf("=");
-    if (valueStartPos === -1) {
-      continue;
-    }
-    const cookieName = pairStr.substring(0, valueStartPos).trim();
-    if (name && name !== cookieName || !validCookieNameRegEx.test(cookieName)) {
-      continue;
-    }
-    let cookieValue = pairStr.substring(valueStartPos + 1).trim();
-    if (cookieValue.startsWith('"') && cookieValue.endsWith('"')) {
-      cookieValue = cookieValue.slice(1, -1);
-    }
-    if (validCookieValueRegEx.test(cookieValue)) {
-      parsedCookie[cookieName] = cookieValue.indexOf("%") !== -1 ? tryDecode(cookieValue, decodeURIComponent_) : cookieValue;
-      if (name) {
-        break;
-      }
-    }
-  }
-  return parsedCookie;
-}, "parse");
-var _serialize = /* @__PURE__ */ __name((name, value, opt = {}) => {
-  let cookie = `${name}=${value}`;
-  if (name.startsWith("__Secure-") && !opt.secure) {
-    throw new Error("__Secure- Cookie must have Secure attributes");
-  }
-  if (name.startsWith("__Host-")) {
-    if (!opt.secure) {
-      throw new Error("__Host- Cookie must have Secure attributes");
-    }
-    if (opt.path !== "/") {
-      throw new Error('__Host- Cookie must have Path attributes with "/"');
-    }
-    if (opt.domain) {
-      throw new Error("__Host- Cookie must not have Domain attributes");
-    }
-  }
-  if (opt && typeof opt.maxAge === "number" && opt.maxAge >= 0) {
-    if (opt.maxAge > 3456e4) {
-      throw new Error(
-        "Cookies Max-Age SHOULD NOT be greater than 400 days (34560000 seconds) in duration."
-      );
-    }
-    cookie += `; Max-Age=${opt.maxAge | 0}`;
-  }
-  if (opt.domain && opt.prefix !== "host") {
-    cookie += `; Domain=${opt.domain}`;
-  }
-  if (opt.path) {
-    cookie += `; Path=${opt.path}`;
-  }
-  if (opt.expires) {
-    if (opt.expires.getTime() - Date.now() > 3456e7) {
-      throw new Error(
-        "Cookies Expires SHOULD NOT be greater than 400 days (34560000 seconds) in the future."
-      );
-    }
-    cookie += `; Expires=${opt.expires.toUTCString()}`;
-  }
-  if (opt.httpOnly) {
-    cookie += "; HttpOnly";
-  }
-  if (opt.secure) {
-    cookie += "; Secure";
-  }
-  if (opt.sameSite) {
-    cookie += `; SameSite=${opt.sameSite.charAt(0).toUpperCase() + opt.sameSite.slice(1)}`;
-  }
-  if (opt.priority) {
-    cookie += `; Priority=${opt.priority.charAt(0).toUpperCase() + opt.priority.slice(1)}`;
-  }
-  if (opt.partitioned) {
-    if (!opt.secure) {
-      throw new Error("Partitioned Cookie must have Secure attributes");
-    }
-    cookie += "; Partitioned";
-  }
-  return cookie;
-}, "_serialize");
-var serialize = /* @__PURE__ */ __name((name, value, opt) => {
-  value = encodeURIComponent(value);
-  return _serialize(name, value, opt);
-}, "serialize");
-
-// node_modules/hono/dist/helper/cookie/index.js
-var getCookie = /* @__PURE__ */ __name((c, key, prefix) => {
-  const cookie = c.req.raw.headers.get("Cookie");
-  if (typeof key === "string") {
-    if (!cookie) {
-      return void 0;
-    }
-    let finalKey = key;
-    if (prefix === "secure") {
-      finalKey = "__Secure-" + key;
-    } else if (prefix === "host") {
-      finalKey = "__Host-" + key;
-    }
-    const obj2 = parse2(cookie, finalKey);
-    return obj2[finalKey];
-  }
-  if (!cookie) {
-    return {};
-  }
-  const obj = parse2(cookie);
-  return obj;
-}, "getCookie");
-var generateCookie = /* @__PURE__ */ __name((name, value, opt) => {
-  let cookie;
-  if (opt?.prefix === "secure") {
-    cookie = serialize("__Secure-" + name, value, { path: "/", ...opt, secure: true });
-  } else if (opt?.prefix === "host") {
-    cookie = serialize("__Host-" + name, value, {
-      ...opt,
-      path: "/",
-      secure: true,
-      domain: void 0
-    });
-  } else {
-    cookie = serialize(name, value, { path: "/", ...opt });
-  }
-  return cookie;
-}, "generateCookie");
-var setCookie2 = /* @__PURE__ */ __name((c, name, value, opt) => {
-  const cookie = generateCookie(name, value, opt);
-  c.header("Set-Cookie", cookie, { append: true });
-}, "setCookie");
-var deleteCookie = /* @__PURE__ */ __name((c, name, opt) => {
-  const deletedCookie = getCookie(c, name, opt?.prefix);
-  setCookie2(c, name, "", { ...opt, maxAge: 0 });
-  return deletedCookie;
-}, "deleteCookie");
-
-// routes/auth/naver.js
 var AUTH = "https://nid.naver.com/oauth2.0/authorize";
 var TOKEN = "https://nid.naver.com/oauth2.0/token";
 var ME = "https://openapi.naver.com/v1/nid/me";
@@ -14587,7 +14597,7 @@ app2.get("/callback", async (c) => {
   }
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
   const isLocal = new URL(c.req.url).hostname === "localhost";
-  setCookie2(c, "rc_session", jwt, {
+  setCookie(c, "rc_session", jwt, {
     path: "/",
     httpOnly: true,
     sameSite: isLocal ? "Lax" : "None",
