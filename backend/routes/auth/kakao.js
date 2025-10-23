@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { setCookie } from 'hono/cookie'
+import { setSessionCookie } from '../../core/cookies.js'
 import { signState, verifyState, signJWT } from '../../core/jwt.js'
 import { getSupabase } from '../../core/db.js'
 
