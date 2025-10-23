@@ -23,9 +23,12 @@ app.get('/', async (c) => {
   const redirect = c.req.query('redirect') || '/'
   const state = await signState({ redirect }, c.env)
 
+  const callbackUrl = pickKakaoCallback(c)
+  console.log('[Kakao Auth] Using redirect_uri:', callbackUrl)
+
   const authUrl = new URL('/oauth/authorize', KAUTH)
   authUrl.searchParams.set('client_id', c.env.KAKAO_CLIENT_ID)
-  authUrl.searchParams.set('redirect_uri', pickKakaoCallback(c))   // ✨ 여기
+  authUrl.searchParams.set('redirect_uri', callbackUrl)   // ✨ 여기
   authUrl.searchParams.set('response_type', 'code')
   authUrl.searchParams.set('scope', 'profile_nickname profile_image account_email')
   authUrl.searchParams.set('state', state)
@@ -46,11 +49,15 @@ app.get('/callback', async (c) => {
   catch { return c.text('Unauthorized: bad state', 401) }
 
   // 토큰 교환
+  const callbackUrl = pickKakaoCallback(c)
+  console.log('[Kakao Callback] Using redirect_uri:', callbackUrl)
+  console.log('[Kakao Callback] Received code:', code.substring(0, 20) + '...')
+  
   const form = new URLSearchParams()
   form.set('grant_type', 'authorization_code')
   form.set('client_id', c.env.KAKAO_CLIENT_ID)
   if (c.env.KAKAO_CLIENT_SECRET) form.set('client_secret', c.env.KAKAO_CLIENT_SECRET)
-  form.set('redirect_uri', pickKakaoCallback(c))                    // ✨ 여기
+  form.set('redirect_uri', callbackUrl)                    // ✨ 여기
   form.set('code', code)
 
   const tok = await fetch(`${KAUTH}/oauth/token`, {
