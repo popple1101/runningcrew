@@ -1854,10 +1854,10 @@ var require_cjs = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-yXvBTH/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-uam47c/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-yXvBTH/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-uam47c/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.js
@@ -3541,6 +3541,9 @@ var cors = /* @__PURE__ */ __name((options) => {
 // routes/auth/kakao.js
 init_modules_watch_stub();
 
+// core/cookies.js
+init_modules_watch_stub();
+
 // node_modules/hono/dist/helper/cookie/index.js
 init_modules_watch_stub();
 
@@ -3687,6 +3690,22 @@ var deleteCookie = /* @__PURE__ */ __name((c, name, opt) => {
   setCookie(c, name, "", { ...opt, maxAge: 0 });
   return deletedCookie;
 }, "deleteCookie");
+
+// core/cookies.js
+function setSessionCookie(c, jwt, maxAgeSec = 60 * 60 * 24 * 30) {
+  const host = new URL(c.req.url).hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  setCookie(c, "rc_session", jwt, {
+    path: "/",
+    httpOnly: true,
+    sameSite: isLocal ? "Lax" : "None",
+    // 배포: None
+    secure: !isLocal,
+    // 배포: true
+    maxAge: maxAgeSec
+  });
+}
+__name(setSessionCookie, "setSessionCookie");
 
 // core/jwt.js
 init_modules_watch_stub();
@@ -14455,7 +14474,7 @@ app.get("/callback", async (c) => {
   if (error) return c.text("DB error: " + error.message, 500);
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
   const isLocal = new URL(c.req.url).hostname === "localhost";
-  setCookie(c, "rc_session", jwt, { path: "/", httpOnly: true, sameSite: "Lax", secure: !isLocal, maxAge: 60 * 60 * 24 * 30 });
+  setSessionCookie(c, jwt);
   const fallback = c.env.APP_REDIRECT_DEFAULT || "https://popple1101.github.io/runningcrew/app";
   const dest = state?.redirect && /^https?:\/\//.test(state.redirect) ? state.redirect : fallback;
   return c.redirect(dest, 302);
@@ -14749,7 +14768,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-yXvBTH/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-uam47c/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14782,7 +14801,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-yXvBTH/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-uam47c/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

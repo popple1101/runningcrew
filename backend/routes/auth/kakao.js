@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { setCookie } from 'hono/cookie'
+import { setSessionCookie } from '../../core/cookies.js'
 import { signState, verifyState, signJWT } from '../../core/jwt.js'
 import { getSupabase } from '../../core/db.js'
 
@@ -90,7 +90,7 @@ app.get('/callback', async (c) => {
   // 세션 쿠키
   const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30)
   const isLocal = new URL(c.req.url).hostname === 'localhost'
-  setCookie(c, 'rc_session', jwt, { path: '/', httpOnly: true, sameSite: 'Lax', secure: !isLocal, maxAge: 60 * 60 * 24 * 30 })
+  setSessionCookie(c, jwt)  // core/cookies.js가 prod에서 SameSite:'None', Secure:true로 셋업함
 
   // 최종 리다이렉트
   const fallback = c.env.APP_REDIRECT_DEFAULT || 'https://popple1101.github.io/runningcrew/app'
