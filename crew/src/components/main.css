@@ -124,3 +124,77 @@
     padding: 12px 16px;
   }
 }
+
+/* 구분선 */
+.divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 16px;
+  color: #999;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+
+/* 일반 로그인 버튼들 */
+.auth-buttons {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.email-btn {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: clamp(16px, 4vw, 18px);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.login-btn {
+  background: white;
+  color: #0d3b66;
+  border-color: #0d3b66;
+}
+
+.login-btn:hover {
+  background: #f8f9fa;
+  border-color: #274c77;
+  color: #274c77;
+}
+
+.signup-btn {
+  background: linear-gradient(135deg, #0d3b66, #274c77);
+  color: white;
+  box-shadow: 0 4px 12px rgba(13, 59, 102, 0.3);
+}
+
+.signup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(13, 59, 102, 0.4);
+}
+
+@media (max-width: 480px) {
+  .email-btn {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: clamp(15px, 4.5vw, 17px);
+  }
+  
+  .divider {
+    margin: 16px 0 12px;
+  }
+}

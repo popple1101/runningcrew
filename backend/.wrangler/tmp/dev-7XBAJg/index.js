@@ -1854,10 +1854,10 @@ var require_cjs = __commonJS({
   }
 });
 
-// .wrangler/tmp/bundle-BGhSuK/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-YZIauJ/middleware-loader.entry.ts
 init_modules_watch_stub();
 
-// .wrangler/tmp/bundle-BGhSuK/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-YZIauJ/middleware-insertion-facade.js
 init_modules_watch_stub();
 
 // src/index.js
@@ -2640,14 +2640,14 @@ var Hono = class {
   }
   #notFoundHandler = notFoundHandler;
   errorHandler = errorHandler;
-  route(path, app7) {
+  route(path, app9) {
     const subApp = this.basePath(path);
-    app7.routes.map((r) => {
+    app9.routes.map((r) => {
       let handler;
-      if (app7.errorHandler === errorHandler) {
+      if (app9.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app7.errorHandler)(c, () => r.handler(c, next))).res, "handler");
+        handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app9.errorHandler)(c, () => r.handler(c, next))).res, "handler");
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler);
@@ -14638,10 +14638,224 @@ app3.post("/", (c) => {
 });
 var logout_default = app3;
 
+// routes/auth/signup.js
+init_modules_watch_stub();
+
+// core/password.js
+init_modules_watch_stub();
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const encoder2 = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder2.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 1e5,
+      // 보안을 위해 10만번 반복
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+    // 32 bytes
+  );
+  const saltB64 = btoa(String.fromCharCode(...salt));
+  const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+  return `${saltB64}:${hashB64}`;
+}
+__name(hashPassword, "hashPassword");
+async function verifyPassword(password, storedHash) {
+  try {
+    const [saltB64, expectedHashB64] = storedHash.split(":");
+    if (!saltB64 || !expectedHashB64) return false;
+    const salt = Uint8Array.from(atob(saltB64), (c) => c.charCodeAt(0));
+    const encoder2 = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      encoder2.encode(password),
+      "PBKDF2",
+      false,
+      ["deriveBits"]
+    );
+    const hashBuffer = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt,
+        iterations: 1e5,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      256
+    );
+    const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+    return hashB64 === expectedHashB64;
+  } catch {
+    return false;
+  }
+}
+__name(verifyPassword, "verifyPassword");
+function validatePassword(password) {
+  if (!password || password.length < 8) {
+    return { valid: false, message: "\uBE44\uBC00\uBC88\uD638\uB294 \uCD5C\uC18C 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" };
+  }
+  if (password.length > 100) {
+    return { valid: false, message: "\uBE44\uBC00\uBC88\uD638\uAC00 \uB108\uBB34 \uAE41\uB2C8\uB2E4" };
+  }
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return { valid: false, message: "\uBE44\uBC00\uBC88\uD638\uB294 \uC601\uBB38\uC790\uC640 \uC22B\uC790\uB97C \uBAA8\uB450 \uD3EC\uD568\uD574\uC57C \uD569\uB2C8\uB2E4" };
+  }
+  return { valid: true, message: "OK" };
+}
+__name(validatePassword, "validatePassword");
+
+// routes/auth/signup.js
+var app4 = new Hono2();
+app4.post("/", async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.text("Bad Request: invalid JSON", 400);
+  }
+  const { email, password, nickname } = body;
+  if (!email || !password || !nickname) {
+    return c.text("\uC774\uBA54\uC77C, \uBE44\uBC00\uBC88\uD638, \uB2C9\uB124\uC784\uC744 \uBAA8\uB450 \uC785\uB825\uD574\uC8FC\uC138\uC694", 400);
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return c.text("\uC62C\uBC14\uB978 \uC774\uBA54\uC77C \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4", 400);
+  }
+  const pwdValidation = validatePassword(password);
+  if (!pwdValidation.valid) {
+    return c.text(pwdValidation.message, 400);
+  }
+  const trimmedNickname = nickname.trim();
+  if (trimmedNickname.length < 2 || trimmedNickname.length > 30) {
+    return c.text("\uB2C9\uB124\uC784\uC740 2~30\uC790 \uC0AC\uC774\uC5EC\uC57C \uD569\uB2C8\uB2E4", 400);
+  }
+  console.log("[Signup] Hashing password...");
+  const passwordHash = await hashPassword(password);
+  const supa = getSupabase(c);
+  const { data: existing } = await supa.from("users").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  if (existing) {
+    return c.text("\uC774\uBBF8 \uAC00\uC785\uB41C \uC774\uBA54\uC77C\uC785\uB2C8\uB2E4", 409);
+  }
+  const row = {
+    provider: "email",
+    provider_sub: `email_${email.toLowerCase()}`,
+    // 고유 식별자
+    email: email.toLowerCase(),
+    nickname: trimmedNickname,
+    password_hash: passwordHash,
+    last_login_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  console.log("[Signup] Inserting user...");
+  const { data: user, error } = await supa.from("users").insert(row).select("id, nickname, email").single();
+  if (error) {
+    console.error("[Signup] DB error:", error.message, error);
+    return c.text("\uD68C\uC6D0\uAC00\uC785 \uC2E4\uD328: " + error.message, 500);
+  }
+  console.log("[Signup] User created:", user.id);
+  const jwt = await signJWT(
+    { sub: String(user.id), nickname: user.nickname },
+    c.env,
+    60 * 60 * 24 * 30
+    // 30일
+  );
+  const host = new URL(c.req.url).hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  setCookie(c, "rc_session", jwt, {
+    path: "/",
+    httpOnly: true,
+    sameSite: isLocal ? "Lax" : "None",
+    secure: isLocal ? false : true,
+    maxAge: 60 * 60 * 24 * 30
+  });
+  console.log("[Signup] Session cookie set");
+  return c.json({
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname
+    }
+  });
+});
+var signup_default = app4;
+
+// routes/auth/login.js
+init_modules_watch_stub();
+var app5 = new Hono2();
+app5.post("/", async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.text("Bad Request: invalid JSON", 400);
+  }
+  const { email, password } = body;
+  if (!email || !password) {
+    return c.text("\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694", 400);
+  }
+  const supa = getSupabase(c);
+  console.log("[Login] Looking up user:", email.toLowerCase());
+  const { data: user, error } = await supa.from("users").select("id, email, nickname, password_hash, provider").eq("email", email.toLowerCase()).eq("provider", "email").maybeSingle();
+  if (error) {
+    console.error("[Login] DB error:", error);
+    return c.text("\uB85C\uADF8\uC778 \uC2E4\uD328", 500);
+  }
+  if (!user) {
+    console.log("[Login] User not found");
+    return c.text("\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", 401);
+  }
+  if (!user.password_hash) {
+    console.log("[Login] No password hash (OAuth user?)");
+    return c.text("\uC18C\uC15C \uB85C\uADF8\uC778\uC73C\uB85C \uAC00\uC785\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4", 400);
+  }
+  console.log("[Login] Verifying password...");
+  const isValid = await verifyPassword(password, user.password_hash);
+  if (!isValid) {
+    console.log("[Login] Invalid password");
+    return c.text("\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", 401);
+  }
+  await supa.from("users").update({ last_login_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", user.id);
+  const jwt = await signJWT(
+    { sub: String(user.id), nickname: user.nickname },
+    c.env,
+    60 * 60 * 24 * 30
+    // 30일
+  );
+  const host = new URL(c.req.url).hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  setCookie(c, "rc_session", jwt, {
+    path: "/",
+    httpOnly: true,
+    sameSite: isLocal ? "Lax" : "None",
+    secure: isLocal ? false : true,
+    maxAge: 60 * 60 * 24 * 30
+  });
+  console.log("[Login] Login successful, user ID:", user.id);
+  return c.json({
+    ok: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname
+    }
+  });
+});
+var login_default = app5;
+
 // routes/auth/session.js
 init_modules_watch_stub();
-var app4 = new Hono2();
-app4.get("/", async (c) => {
+var app6 = new Hono2();
+app6.get("/", async (c) => {
   const auth = c.req.header("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : auth?.split(" ")[1];
   const token = bearer || getCookie(c, "rc_session");
@@ -14668,11 +14882,11 @@ app4.get("/", async (c) => {
   if (error) return c.text("DB Error: " + error.message, 500);
   return c.json({ user: data ?? null });
 });
-var session_default = app4;
+var session_default = app6;
 
 // routes/api/profile.js
 init_modules_watch_stub();
-var app5 = new Hono2();
+var app7 = new Hono2();
 async function requireUserId(c) {
   const token = getCookie(c, "rc_session");
   if (!token) return null;
@@ -14688,7 +14902,7 @@ async function requireUserId(c) {
   }
 }
 __name(requireUserId, "requireUserId");
-app5.put("/", async (c) => {
+app7.put("/", async (c) => {
   const userId = await requireUserId(c);
   if (!userId) return c.text("Unauthorized", 401);
   let body;
@@ -14726,7 +14940,7 @@ app5.put("/", async (c) => {
   }
   return c.json({ ok: true, user: data });
 });
-app5.get("/", async (c) => {
+app7.get("/", async (c) => {
   const userId = await requireUserId(c);
   if (!userId) return c.text("Unauthorized", 401);
   const sb = getSupabase(c);
@@ -14737,11 +14951,11 @@ app5.get("/", async (c) => {
   }
   return c.json({ ok: true, user: data });
 });
-var profile_default = app5;
+var profile_default = app7;
 
 // src/index.js
-var app6 = new Hono2();
-app6.use("/*", (c, next) => {
+var app8 = new Hono2();
+app8.use("/*", (c, next) => {
   const allowList = (c.env.CORS_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
   const originFn = /* @__PURE__ */ __name((origin) => {
     if (!origin) return "";
@@ -14760,14 +14974,16 @@ app6.use("/*", (c, next) => {
     // preflight 캐시(선택)
   })(c, next);
 });
-app6.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
-app6.route("/auth/kakao", kakao_default);
-app6.route("/auth/naver", naver_default);
-app6.route("/auth/logout", logout_default);
-app6.route("/api/me", session_default);
-app6.route("/me", session_default);
-app6.route("/api/profile", profile_default);
-var src_default = app6;
+app8.get("/", (c) => c.json({ ok: true, name: "RunCrew API" }));
+app8.route("/auth/kakao", kakao_default);
+app8.route("/auth/naver", naver_default);
+app8.route("/auth/logout", logout_default);
+app8.route("/auth/signup", signup_default);
+app8.route("/auth/login", login_default);
+app8.route("/api/me", session_default);
+app8.route("/me", session_default);
+app8.route("/api/profile", profile_default);
+var src_default = app8;
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 init_modules_watch_stub();
@@ -14812,7 +15028,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-BGhSuK/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-YZIauJ/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -14845,7 +15061,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-BGhSuK/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-YZIauJ/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

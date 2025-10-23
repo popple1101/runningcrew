@@ -41,6 +41,36 @@ export async function postLogout() {
   } catch {}
 }
 
+// 회원가입
+export async function postSignup(email, password, nickname) {
+  const r = await fetch(`${API}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password, nickname }),
+  });
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(errorText);
+  }
+  return r.json();
+}
+
+// 로그인
+export async function postLogin(email, password) {
+  const r = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password }),
+  });
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(errorText);
+  }
+  return r.json();
+}
+
 // 프로필 저장/업데이트
 export async function putProfile(payload) {
   const r = await fetch(`${API}/profile`, {

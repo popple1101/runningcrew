@@ -5,6 +5,8 @@ import { cors } from 'hono/cors'
 import kakaoRoute from '../routes/auth/kakao.js'
 import naverRoute from '../routes/auth/naver.js'
 import logoutRoute from '../routes/auth/logout.js'
+import signupRoute from '../routes/auth/signup.js'
+import loginRoute from '../routes/auth/login.js'
 
 import sessionRoute from '../routes/auth/session.js' // /me 반환 (세션 확인)
 import profileRoute from '../routes/api/profile.js'   // 온보딩 저장
@@ -48,6 +50,10 @@ app.get('/', (c) => c.json({ ok: true, name: 'RunCrew API' }))
 app.route('/auth/kakao', kakaoRoute)
 app.route('/auth/naver', naverRoute)
 app.route('/auth/logout', logoutRoute)
+
+// 일반 회원가입/로그인
+app.route('/auth/signup', signupRoute)
+app.route('/auth/login', loginRoute)
 
 // 세션/프로필 API
 // ✅ 배포 호환: /api/me 로도 노출
