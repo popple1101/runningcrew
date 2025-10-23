@@ -93,8 +93,34 @@
   display: block;
 }
 
+/* 모바일 최적화 */
 @media (max-width: 480px) {
   .logo {
     width: min(70vw, 300px);
+  }
+
+  .kakao-btn,
+  .naver-btn {
+    min-height: 48px;      /* ↓ from 56 */
+    padding: 12px 16px;    /* ↓ */
+    border-radius: 14px;   /* 살짝 줄임 */
+    gap: 8px;
+    font-size: clamp(15px, 4.5vw, 17px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+  }
+
+  .kakao-icon,
+  .naver-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* 터치 디바이스 전역 조정(선택) */
+@media (pointer: coarse) {
+  .kakao-btn,
+  .naver-btn {
+    min-height: 48px;
+    padding: 12px 16px;
   }
 }
