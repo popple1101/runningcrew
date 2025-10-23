@@ -22,44 +22,49 @@ app.post('/', async (c) => {
 
   const { email, password } = body;
 
-  // 1) 입력 검증
   if (!email || !password) {
     return c.text('이메일과 비밀번호를 입력해주세요', 400);
   }
 
-  // 2) DB에서 사용자 조회
   const supa = getSupabase(c);
-  
+
+  // 1) local_auth에서 이메일로 조회
   console.log('[Login] Looking up user:', email.toLowerCase());
-  const { data: user, error } = await supa
-    .from('users')
-    .select('id, email, nickname, password_hash, provider')
+  const { data: auth, error: authError } = await supa
+    .from('local_auth')
+    .select('user_id, email, password_hash')
     .eq('email', email.toLowerCase())
-    .eq('provider', 'email') // 일반 회원가입 사용자만
     .maybeSingle();
 
-  if (error) {
-    console.error('[Login] DB error:', error);
+  if (authError) {
+    console.error('[Login] DB error:', authError);
     return c.text('로그인 실패', 500);
   }
 
-  if (!user) {
+  if (!auth) {
     console.log('[Login] User not found');
     return c.text('이메일 또는 비밀번호가 올바르지 않습니다', 401);
   }
 
-  if (!user.password_hash) {
-    console.log('[Login] No password hash (OAuth user?)');
-    return c.text('소셜 로그인으로 가입된 계정입니다', 400);
-  }
-
-  // 3) 비밀번호 검증
+  // 2) 비밀번호 검증
   console.log('[Login] Verifying password...');
-  const isValid = await verifyPassword(password, user.password_hash);
+  const isValid = await verifyPassword(password, auth.password_hash);
 
   if (!isValid) {
     console.log('[Login] Invalid password');
     return c.text('이메일 또는 비밀번호가 올바르지 않습니다', 401);
+  }
+
+  // 3) users 테이블에서 사용자 정보 조회
+  const { data: user, error: userError } = await supa
+    .from('users')
+    .select('id, nickname, email')
+    .eq('id', auth.user_id)
+    .single();
+
+  if (userError || !user) {
+    console.error('[Login] User lookup error:', userError);
+    return c.text('로그인 실패', 500);
   }
 
   // 4) last_login_at 업데이트
@@ -70,9 +75,9 @@ app.post('/', async (c) => {
 
   // 5) JWT 발급 및 쿠키 설정
   const jwt = await signJWT(
-    { sub: String(user.id), nickname: user.nickname },
+    { sub: user.id, nickname: user.nickname },
     c.env,
-    60 * 60 * 24 * 30 // 30일
+    60 * 60 * 24 * 30
   );
 
   const host = new URL(c.req.url).hostname;
@@ -88,7 +93,6 @@ app.post('/', async (c) => {
 
   console.log('[Login] Login successful, user ID:', user.id);
 
-  // 6) 성공 응답
   return c.json({
     ok: true,
     user: {
@@ -100,4 +104,3 @@ app.post('/', async (c) => {
 });
 
 export default app;
-

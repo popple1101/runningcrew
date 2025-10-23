@@ -138,6 +138,8 @@ app.get('/callback', async (c) => {
   // DB upsert
   console.log('[Kakao Callback] Upserting to DB...')
   const supa = getSupabase(c)
+  
+  // users 테이블 upsert (provider + provider_sub 기준)
   const row = {
     provider: 'kakao',
     provider_sub: kakaoId,
@@ -146,20 +148,54 @@ app.get('/callback', async (c) => {
     photo_url,
     last_login_at: new Date().toISOString(),
   }
-  const { data: user, error } = await supa
+  
+  // 기존 사용자 확인
+  const { data: existing } = await supa
     .from('users')
-    .upsert(row, { onConflict: 'provider_sub' })
     .select('id')
-    .single()
+    .eq('provider', 'kakao')
+    .eq('provider_sub', kakaoId)
+    .maybeSingle()
 
-  if (error) {
-    console.error('[Kakao Callback] DB error:', error.message, error)
-    return c.text('DB error: ' + error.message, 500)
+  let user
+  if (existing) {
+    // 기존 사용자 업데이트
+    const { data: updated, error } = await supa
+      .from('users')
+      .update({
+        nickname,
+        email,
+        photo_url,
+        last_login_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select('id')
+      .single()
+    
+    if (error) {
+      console.error('[Kakao Callback] Update error:', error)
+      return c.text('DB error: ' + error.message, 500)
+    }
+    user = updated
+  } else {
+    // 새 사용자 생성
+    const { data: created, error } = await supa
+      .from('users')
+      .insert(row)
+      .select('id')
+      .single()
+    
+    if (error) {
+      console.error('[Kakao Callback] Insert error:', error)
+      return c.text('DB error: ' + error.message, 500)
+    }
+    user = created
   }
+
   console.log('[Kakao Callback] DB upsert success, user ID:', user.id)
 
   // 세션 쿠키 설정 (로컬/배포 분기)
-  const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30) // 30일
+  const jwt = await signJWT({ sub: user.id, nickname }, c.env, 60 * 60 * 24 * 30) // 30일 (UUID는 이미 문자열)
   const host = new URL(c.req.url).hostname
   const isLocal = host === 'localhost' || host === '127.0.0.1'
   setCookie(c, 'rc_session', jwt, {
