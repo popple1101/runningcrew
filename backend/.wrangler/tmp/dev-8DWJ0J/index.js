@@ -14479,13 +14479,30 @@ app.get("/callback", async (c) => {
     photo_url,
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
-  const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
-  if (error) {
-    console.error("[Kakao Callback] DB error:", error.message, error);
-    return c.text("DB error: " + error.message, 500);
+  const { data: existing } = await supa.from("users").select("id").eq("provider", "kakao").eq("provider_sub", kakaoId).maybeSingle();
+  let user;
+  if (existing) {
+    const { data: updated, error } = await supa.from("users").update({
+      nickname,
+      email,
+      photo_url,
+      last_login_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", existing.id).select("id").single();
+    if (error) {
+      console.error("[Kakao Callback] Update error:", error);
+      return c.text("DB error: " + error.message, 500);
+    }
+    user = updated;
+  } else {
+    const { data: created, error } = await supa.from("users").insert(row).select("id").single();
+    if (error) {
+      console.error("[Kakao Callback] Insert error:", error);
+      return c.text("DB error: " + error.message, 500);
+    }
+    user = created;
   }
   console.log("[Kakao Callback] DB upsert success, user ID:", user.id);
-  const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
+  const jwt = await signJWT({ sub: user.id, nickname }, c.env, 60 * 60 * 24 * 30);
   const host = new URL(c.req.url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
   setCookie(c, "rc_session", jwt, {
@@ -14608,12 +14625,29 @@ app2.get("/callback", async (c) => {
     photo_url,
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
-  const { data: user, error } = await supa.from("users").upsert(row, { onConflict: "provider_sub" }).select("id").single();
-  if (error) {
-    console.error("[DB upsert] error=", error);
-    return c.text("DB error: " + error.message, 500);
+  const { data: existing } = await supa.from("users").select("id").eq("provider", "naver").eq("provider_sub", naverId).maybeSingle();
+  let user;
+  if (existing) {
+    const { data: updated, error } = await supa.from("users").update({
+      nickname,
+      email,
+      photo_url,
+      last_login_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", existing.id).select("id").single();
+    if (error) {
+      console.error("[DB update] error=", error);
+      return c.text("DB error: " + error.message, 500);
+    }
+    user = updated;
+  } else {
+    const { data: created, error } = await supa.from("users").insert(row).select("id").single();
+    if (error) {
+      console.error("[DB insert] error=", error);
+      return c.text("DB error: " + error.message, 500);
+    }
+    user = created;
   }
-  const jwt = await signJWT({ sub: String(user.id), nickname }, c.env, 60 * 60 * 24 * 30);
+  const jwt = await signJWT({ sub: user.id, nickname }, c.env, 60 * 60 * 24 * 30);
   const host = new URL(c.req.url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
   setCookie(c, "rc_session", jwt, {
@@ -14739,34 +14773,42 @@ app4.post("/", async (c) => {
   if (trimmedNickname.length < 2 || trimmedNickname.length > 30) {
     return c.text("\uB2C9\uB124\uC784\uC740 2~30\uC790 \uC0AC\uC774\uC5EC\uC57C \uD569\uB2C8\uB2E4", 400);
   }
-  console.log("[Signup] Hashing password...");
-  const passwordHash = await hashPassword(password);
   const supa = getSupabase(c);
-  const { data: existing } = await supa.from("users").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  const { data: existing } = await supa.from("local_auth").select("user_id").eq("email", email.toLowerCase()).maybeSingle();
   if (existing) {
     return c.text("\uC774\uBBF8 \uAC00\uC785\uB41C \uC774\uBA54\uC77C\uC785\uB2C8\uB2E4", 409);
   }
-  const row = {
-    provider: "email",
-    provider_sub: `email_${email.toLowerCase()}`,
-    // 고유 식별자
+  console.log("[Signup] Hashing password...");
+  const passwordHash = await hashPassword(password);
+  const userRow = {
+    provider: "local",
+    provider_sub: `local_${email.toLowerCase()}`,
     email: email.toLowerCase(),
     nickname: trimmedNickname,
-    password_hash: passwordHash,
     last_login_at: (/* @__PURE__ */ new Date()).toISOString()
   };
-  console.log("[Signup] Inserting user...");
-  const { data: user, error } = await supa.from("users").insert(row).select("id, nickname, email").single();
-  if (error) {
-    console.error("[Signup] DB error:", error.message, error);
-    return c.text("\uD68C\uC6D0\uAC00\uC785 \uC2E4\uD328: " + error.message, 500);
+  console.log("[Signup] Creating user...");
+  const { data: user, error: userError } = await supa.from("users").insert(userRow).select("id, nickname, email").single();
+  if (userError) {
+    console.error("[Signup] User creation error:", userError);
+    return c.text("\uD68C\uC6D0\uAC00\uC785 \uC2E4\uD328: " + userError.message, 500);
+  }
+  const authRow = {
+    user_id: user.id,
+    email: email.toLowerCase(),
+    password_hash: passwordHash
+  };
+  const { error: authError } = await supa.from("local_auth").insert(authRow);
+  if (authError) {
+    await supa.from("users").delete().eq("id", user.id);
+    console.error("[Signup] Auth creation error:", authError);
+    return c.text("\uD68C\uC6D0\uAC00\uC785 \uC2E4\uD328: " + authError.message, 500);
   }
   console.log("[Signup] User created:", user.id);
   const jwt = await signJWT(
-    { sub: String(user.id), nickname: user.nickname },
+    { sub: user.id, nickname: user.nickname },
     c.env,
     60 * 60 * 24 * 30
-    // 30일
   );
   const host = new URL(c.req.url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
@@ -14805,31 +14847,31 @@ app5.post("/", async (c) => {
   }
   const supa = getSupabase(c);
   console.log("[Login] Looking up user:", email.toLowerCase());
-  const { data: user, error } = await supa.from("users").select("id, email, nickname, password_hash, provider").eq("email", email.toLowerCase()).eq("provider", "email").maybeSingle();
-  if (error) {
-    console.error("[Login] DB error:", error);
+  const { data: auth, error: authError } = await supa.from("local_auth").select("user_id, email, password_hash").eq("email", email.toLowerCase()).maybeSingle();
+  if (authError) {
+    console.error("[Login] DB error:", authError);
     return c.text("\uB85C\uADF8\uC778 \uC2E4\uD328", 500);
   }
-  if (!user) {
+  if (!auth) {
     console.log("[Login] User not found");
     return c.text("\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", 401);
   }
-  if (!user.password_hash) {
-    console.log("[Login] No password hash (OAuth user?)");
-    return c.text("\uC18C\uC15C \uB85C\uADF8\uC778\uC73C\uB85C \uAC00\uC785\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4", 400);
-  }
   console.log("[Login] Verifying password...");
-  const isValid = await verifyPassword(password, user.password_hash);
+  const isValid = await verifyPassword(password, auth.password_hash);
   if (!isValid) {
     console.log("[Login] Invalid password");
     return c.text("\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", 401);
   }
+  const { data: user, error: userError } = await supa.from("users").select("id, nickname, email").eq("id", auth.user_id).single();
+  if (userError || !user) {
+    console.error("[Login] User lookup error:", userError);
+    return c.text("\uB85C\uADF8\uC778 \uC2E4\uD328", 500);
+  }
   await supa.from("users").update({ last_login_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", user.id);
   const jwt = await signJWT(
-    { sub: String(user.id), nickname: user.nickname },
+    { sub: user.id, nickname: user.nickname },
     c.env,
     60 * 60 * 24 * 30
-    // 30일
   );
   const host = new URL(c.req.url).hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
@@ -14868,19 +14910,29 @@ app6.get("/", async (c) => {
     console.log("Session - JWT verification failed:", e.message);
     return c.text("Unauthorized: jwt error - " + e.message, 401);
   }
-  console.log("Session - SUPABASE_URL:", c.env.SUPABASE_URL ? "present" : "missing");
-  console.log("Session - SUPABASE_SERVICE_ROLE_KEY:", c.env.SUPABASE_SERVICE_ROLE_KEY ? "present" : "missing");
   if (!c.env.SUPABASE_URL || !c.env.SUPABASE_SERVICE_ROLE_KEY) {
     return c.text("Server misconfig: SUPABASE env missing", 500);
   }
   const supa = getSupabase(c);
-  const userId = String(payload.sub);
+  const userId = payload.sub;
   console.log("Session - Attempting DB query for userId:", userId);
-  const { data, error } = await supa.from("users").select("id, provider, provider_sub, nickname, email, photo_url, age, gender, lat, lng, accuracy, region_verified, crew_choice").eq("id", userId).single();
-  console.log("Session - DB query result:", { data, error, userId });
-  if (error?.code === "PGRST116") return c.body(null, 204);
-  if (error) return c.text("DB Error: " + error.message, 500);
-  return c.json({ user: data ?? null });
+  const { data: user, error: userError } = await supa.from("users").select("id, provider, provider_sub, nickname, email, photo_url").eq("id", userId).maybeSingle();
+  if (userError) {
+    console.error("Session - User query error:", userError);
+    return c.text("DB Error: " + userError.message, 500);
+  }
+  if (!user) {
+    console.log("Session - User not found");
+    return c.body(null, 204);
+  }
+  const { data: profile } = await supa.from("profiles").select("nickname, age, gender, bio, lat, lng, region_verified, crew_choice").eq("user_id", userId).maybeSingle();
+  const result = {
+    ...user,
+    // profiles가 있으면 병합 (온보딩 완료)
+    ...profile || {}
+  };
+  console.log("Session - Success:", result);
+  return c.json({ user: result });
 });
 var session_default = app6;
 
@@ -14896,7 +14948,7 @@ async function requireUserId(c) {
       issuer: c.env.JWT_ISSUER,
       audience: c.env.JWT_AUDIENCE
     });
-    return String(payload.sub);
+    return payload.sub;
   } catch {
     return null;
   }
@@ -14913,43 +14965,52 @@ app7.put("/", async (c) => {
   }
   const nickname = (body.nickname || "").toString().trim().slice(0, 30);
   const age = Number(body.age) || null;
-  const gender = ["female", "male", "other"].includes(body.gender) ? body.gender : null;
+  const gender = ["male", "female", "other"].includes(body.gender) ? body.gender : "unknown";
   const lat = typeof body.lat === "number" ? body.lat : null;
   const lng = typeof body.lng === "number" ? body.lng : null;
-  const accuracy = typeof body.accuracy === "number" ? body.accuracy : null;
+  const region_verified = lat !== null && lng !== null;
   const crew_choice = ["have", "create", "browse"].includes(body.crew_choice) ? body.crew_choice : null;
+  const bio = (body.bio || "").toString().trim().slice(0, 500);
   if (!nickname || !age || !gender) {
     return c.text("nickname/age/gender required", 400);
   }
-  const region_verified = lat !== null && lng !== null;
   const sb = getSupabase(c);
-  const { data, error } = await sb.from("users").update({
+  const profileRow = {
+    user_id: userId,
     nickname,
     age,
     gender,
+    bio,
     lat,
     lng,
-    accuracy,
     region_verified,
     crew_choice,
     updated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }).eq("id", userId).select("*").single();
+  };
+  const { data, error } = await sb.from("profiles").upsert(profileRow, { onConflict: "user_id" }).select("*").single();
   if (error) {
-    console.error("Profile update error:", error);
+    console.error("Profile upsert error:", error);
     return c.text("DB error: " + error.message, 500);
   }
-  return c.json({ ok: true, user: data });
+  await sb.from("users").update({ nickname }).eq("id", userId);
+  return c.json({ ok: true, profile: data });
 });
 app7.get("/", async (c) => {
   const userId = await requireUserId(c);
   if (!userId) return c.text("Unauthorized", 401);
   const sb = getSupabase(c);
-  const { data, error } = await sb.from("users").select("id, nickname").eq("id", userId).single();
-  if (error) {
-    console.error("Profile fetch error:", error);
-    return c.text("DB error: " + error.message, 500);
+  const { data: user } = await sb.from("users").select("id, nickname, email, photo_url").eq("id", userId).maybeSingle();
+  const { data: profile } = await sb.from("profiles").select("*").eq("user_id", userId).maybeSingle();
+  if (!user) {
+    return c.text("User not found", 404);
   }
-  return c.json({ ok: true, user: data });
+  return c.json({
+    ok: true,
+    user: {
+      ...user,
+      ...profile || {}
+    }
+  });
 });
 var profile_default = app7;
 
