@@ -2,10 +2,12 @@ import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Protected from "./routes/Protected";
-import ProfileGate from "./routes/ProfileGate";                 // ✅ 추가
+import ProfileGate from "./routes/ProfileGate";
 import Main from "./components/Main";
 import AppPage from "./pages/AppPage";
-import Onboarding from "./pages/Onboarding/Onboarding";         // ✅ 추가
+import Onboarding from "./pages/Onboarding/Onboarding";
+import CrewList from "./pages/Crews/CrewList";
+import CrewNew from "./pages/Crews/CrewNew";
 import "./components/main.css";
 
 export default function App() {
@@ -25,6 +27,28 @@ export default function App() {
               <Protected>
                 <ProfileGate>
                   <AppPage />
+                </ProfileGate>
+              </Protected>
+            }
+          />
+
+          {/* 크루 페이지들 */}
+          <Route
+            path="/app/crews"
+            element={
+              <Protected>
+                <ProfileGate>
+                  <CrewList />
+                </ProfileGate>
+              </Protected>
+            }
+          />
+          <Route
+            path="/app/crews/new"
+            element={
+              <Protected>
+                <ProfileGate>
+                  <CrewNew />
                 </ProfileGate>
               </Protected>
             }
